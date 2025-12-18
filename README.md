@@ -1,41 +1,131 @@
-# excalidraw-storage-backend
+# Astradraw Storage
 
-This is a reimplementation of [excalidraw-json](https://github.com/excalidraw/excalidraw-json) suitable for self hosting you own instance of Excalidraw.
+> **Built on top of [excalidraw-storage-backend](https://github.com/kiliandeca/excalidraw-storage-backend)** - HTTP storage backend for Excalidraw.
 
-It can be used with [kiliandeca/excalidraw-fork](https://gitlab.com/kiliandeca/excalidraw-fork)
+Self-hosted storage backend for Astradraw with PostgreSQL, MongoDB, Redis, and MySQL support.
 
-[DockerHub kiliandeca/excalidraw-storage-backend](https://hub.docker.com/r/kiliandeca/excalidraw-storage-backend)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Docker](https://img.shields.io/badge/docker-ghcr.io-blue)](https://github.com/astrateam-net/astradraw-storage/pkgs/container/astradraw-storage)
 
-Feature:
+## Features
 
-- Storing scenes: when you export as a link
-- Storing rooms: when you create a live collaboration
-- Storing images: when you export or do a live collaboration of a scene with images
+- ✅ **Multiple Databases**: PostgreSQL, MongoDB, Redis, MySQL via [Keyv](https://github.com/jaredwray/keyv)
+- ✅ **Docker Secrets Support**: Native `_FILE` suffix support for secrets
+- ✅ **Scenes Storage**: Export as link functionality
+- ✅ **Rooms Storage**: Real-time collaboration sessions
+- ✅ **Files Storage**: Images and attachments
+- ✅ **REST API**: Simple HTTP API compatible with Excalidraw frontend
+- ✅ **Self-hosted**: Full control over your data
 
-It use Keyv as a simple K/V store so you can use the database of your choice.
+## Architecture
+
+This is the storage backend component of the Astradraw suite:
+
+- **[astradraw-app](https://github.com/astrateam-net/astradraw-app)**: Frontend application
+- **astradraw-storage** (this repo): Storage backend API
+- **[astradraw](https://github.com/astrateam-net/astradraw)**: Deployment configuration
+
+## Key Modifications from Upstream
+
+### Docker Secrets Support
+
+Added `src/utils/secrets.ts` helper to read secrets from files:
+
+```typescript
+export function getSecret(name: string, defaultValue?: string): string | undefined
+export function getSecretOrThrow(name: string): string
+```
+
+Any environment variable supports a `_FILE` suffix to read from files (Docker Swarm, Kubernetes secrets).
 
 ## Environment Variables
 
-| Name            | Description                                                  | Default value    |
-| --------------- | ------------------------------------------------------------ | ---------------- |
-| `PORT`          | Server listening port                                        | 8080             |
-| `GLOBAL_PREFIX` | API global prefix for every routes                           | `/api/v2`        |
-| `STORAGE_URI`   | [Keyv](https://github.com/jaredwray/keyv) connection string, example: `redis://user:pass@localhost:6379`. Available Keyv storage adapter: redis, mongo, postgres and mysql  | `""` (in memory **non-persistent**) |
-| `LOG_LEVEL`     | Log level (`debug`, `verbose`, `log`, `warn`, `error`)       | `warn`           |
-| `BODY_LIMIT`    | Payload size limit for scenes or images                      | `50mb`           |
+| Variable | Description | Default | `_FILE` Support |
+|----------|-------------|---------|-----------------|
+| `STORAGE_URI` | Keyv connection string | `""` (in-memory) | ✅ |
+| `PORT` | Server listening port | `8080` | ✅ |
+| `GLOBAL_PREFIX` | API prefix for all routes | `/api/v2` | ✅ |
+| `LOG_LEVEL` | Log level | `warn` | ✅ |
+| `BODY_LIMIT` | Payload size limit | `50mb` | ✅ |
 
-## Docker Secrets Support (`_FILE` suffix)
+### Supported Databases (via Keyv)
 
-All environment variables support reading values from files via the `_FILE` suffix. This is useful for Docker Swarm secrets or Kubernetes secrets mounted as files.
+```bash
+# PostgreSQL
+STORAGE_URI=postgres://user:pass@host:5432/db
 
-For any environment variable `VAR_NAME`, you can instead set `VAR_NAME_FILE` to the path of a file containing the secret value.
+# MongoDB
+STORAGE_URI=mongodb://user:pass@host:27017/db
 
-**Example with Docker Swarm:**
+# Redis
+STORAGE_URI=redis://user:pass@host:6379
+
+# MySQL
+STORAGE_URI=mysql://user:pass@host:3306/db
+
+# In-memory (non-persistent)
+STORAGE_URI=
+```
+
+## Quick Start
+
+### Using Docker (Production)
+
+```bash
+docker run -d \
+  -p 8080:8080 \
+  -e STORAGE_URI=postgres://user:pass@postgres:5432/astradraw \
+  ghcr.io/astrateam-net/astradraw-storage:latest
+```
+
+### Using Docker Secrets
+
+```bash
+# Create secret file
+echo "postgres://user:pass@postgres:5432/astradraw" > secrets/storage_uri
+
+# Run with secret
+docker run -d \
+  -p 8080:8080 \
+  -e STORAGE_URI_FILE=/run/secrets/storage_uri \
+  -v ./secrets:/run/secrets:ro \
+  ghcr.io/astrateam-net/astradraw-storage:latest
+```
+
+### Building from Source
+
+```bash
+# Install dependencies
+npm install
+
+# Build
+npm run build
+
+# Start
+npm run start:prod
+```
+
+### Local Development
+
+```bash
+# Install dependencies
+npm install
+
+# Start dev server
+npm run start:dev
+
+# Run tests
+npm run test
+```
+
+## Docker Secrets Support
+
+### Docker Swarm Example
 
 ```yaml
 services:
   storage:
-    image: excalidraw-storage-backend
+    image: ghcr.io/astrateam-net/astradraw-storage:latest
     environment:
       - STORAGE_URI_FILE=/run/secrets/storage_uri
     secrets:
@@ -46,7 +136,7 @@ secrets:
     external: true
 ```
 
-**Example with Kubernetes:**
+### Kubernetes Example
 
 ```yaml
 env:
@@ -56,9 +146,66 @@ volumeMounts:
   - name: secrets
     mountPath: /etc/secrets
     readOnly: true
+volumes:
+  - name: secrets
+    secret:
+      secretName: astradraw-storage-secrets
 ```
 
-**Priority:**
-1. If `VAR_NAME_FILE` is set and the file exists, the file contents are used
-2. Otherwise, `VAR_NAME` environment variable is used
-3. Otherwise, the default value is used
+### Priority Order
+
+1. If `VAR_NAME_FILE` is set and file exists → use file contents
+2. Otherwise, if `VAR_NAME` is set → use env var
+3. Otherwise → use default value
+
+## API Endpoints
+
+- `POST /api/v2/scenes/:id` - Save scene
+- `GET /api/v2/scenes/:id` - Load scene
+- `POST /api/v2/rooms/:id` - Save room
+- `GET /api/v2/rooms/:id` - Load room
+- `POST /api/v2/files` - Upload files
+- `GET /api/v2/files/:id` - Download file
+
+## Deployment
+
+For complete deployment with frontend, database, and Traefik proxy, see the [astradraw deployment repo](https://github.com/astrateam-net/astradraw).
+
+### Docker Compose Example
+
+```yaml
+services:
+  storage:
+    image: ghcr.io/astrateam-net/astradraw-storage:latest
+    environment:
+      - STORAGE_URI_FILE=/run/secrets/storage_uri
+      - PORT=8080
+      - LOG_LEVEL=log
+    volumes:
+      - ./secrets:/run/secrets:ro
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=astradraw
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_DB=astradraw
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+```
+
+## License
+
+MIT License - Based on [excalidraw-storage-backend](https://github.com/kiliandeca/excalidraw-storage-backend)
+
+## Links
+
+- **Upstream**: [kiliandeca/excalidraw-storage-backend](https://github.com/kiliandeca/excalidraw-storage-backend)
+- **Frontend App**: [astradraw-app](https://github.com/astrateam-net/astradraw-app)
+- **Deployment**: [astradraw](https://github.com/astrateam-net/astradraw)
+- **Docker Image**: [ghcr.io/astrateam-net/astradraw-storage](https://github.com/astrateam-net/astradraw-storage/pkgs/container/astradraw-storage)
