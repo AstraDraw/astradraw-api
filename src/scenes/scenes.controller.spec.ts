@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ScenesController } from './scenes.controller';
-import { STORAGE_SERVICE, IStorageService, StorageNamespace } from '../storage/storage.interface';
+import {
+  STORAGE_SERVICE,
+  IStorageService,
+  StorageNamespace,
+} from '../storage/storage.interface';
 
 const mockStorageService: Partial<IStorageService> = {
   get: jest.fn().mockResolvedValue(null),

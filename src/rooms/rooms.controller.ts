@@ -11,7 +11,11 @@ import {
   Res,
 } from '@nestjs/common';
 import { Response } from 'express';
-import { IStorageService, STORAGE_SERVICE, StorageNamespace } from '../storage/storage.interface';
+import {
+  IStorageService,
+  STORAGE_SERVICE,
+  StorageNamespace,
+} from '../storage/storage.interface';
 import { Readable } from 'stream';
 
 @Controller('rooms')

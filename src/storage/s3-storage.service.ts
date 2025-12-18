@@ -13,7 +13,7 @@ import { IStorageService, StorageNamespace } from './storage.interface';
 /**
  * S3-compatible storage service implementation.
  * Supports MinIO, AWS S3, and other S3-compatible services.
- * 
+ *
  * Configuration via environment variables (all support _FILE suffix for Docker secrets):
  * - S3_ENDPOINT: S3 endpoint URL (e.g., http://minio:9000)
  * - S3_ACCESS_KEY: Access key ID
@@ -40,10 +40,14 @@ export class S3StorageService implements IStorageService, OnModuleInit {
       throw new Error('S3_ENDPOINT is required for S3 storage backend');
     }
     if (!accessKey || !secretKey) {
-      throw new Error('S3_ACCESS_KEY and S3_SECRET_KEY are required for S3 storage backend');
+      throw new Error(
+        'S3_ACCESS_KEY and S3_SECRET_KEY are required for S3 storage backend',
+      );
     }
 
-    this.logger.log(`Initializing S3 storage with endpoint: ${endpoint}, bucket: ${this.bucket}`);
+    this.logger.log(
+      `Initializing S3 storage with endpoint: ${endpoint}, bucket: ${this.bucket}`,
+    );
 
     this.s3Client = new S3Client({
       endpoint,
@@ -69,14 +73,22 @@ export class S3StorageService implements IStorageService, OnModuleInit {
       await this.s3Client.send(new HeadBucketCommand({ Bucket: this.bucket }));
       this.logger.log(`Bucket "${this.bucket}" exists`);
     } catch (error: any) {
-      if (error.name === 'NotFound' || error.$metadata?.httpStatusCode === 404) {
+      if (
+        error.name === 'NotFound' ||
+        error.$metadata?.httpStatusCode === 404
+      ) {
         this.logger.log(`Bucket "${this.bucket}" not found, creating...`);
         try {
-          await this.s3Client.send(new CreateBucketCommand({ Bucket: this.bucket }));
+          await this.s3Client.send(
+            new CreateBucketCommand({ Bucket: this.bucket }),
+          );
           this.logger.log(`Bucket "${this.bucket}" created successfully`);
         } catch (createError: any) {
           // Bucket might have been created by another instance
-          if (createError.name !== 'BucketAlreadyOwnedByYou' && createError.name !== 'BucketAlreadyExists') {
+          if (
+            createError.name !== 'BucketAlreadyOwnedByYou' &&
+            createError.name !== 'BucketAlreadyExists'
+          ) {
             throw createError;
           }
         }
@@ -116,7 +128,10 @@ export class S3StorageService implements IStorageService, OnModuleInit {
       }
       return Buffer.concat(chunks);
     } catch (error: any) {
-      if (error.name === 'NoSuchKey' || error.$metadata?.httpStatusCode === 404) {
+      if (
+        error.name === 'NoSuchKey' ||
+        error.$metadata?.httpStatusCode === 404
+      ) {
         return null;
       }
       this.logger.error(`Error getting object ${objectKey}:`, error);
@@ -136,7 +151,10 @@ export class S3StorageService implements IStorageService, OnModuleInit {
       );
       return true;
     } catch (error: any) {
-      if (error.name === 'NotFound' || error.$metadata?.httpStatusCode === 404) {
+      if (
+        error.name === 'NotFound' ||
+        error.$metadata?.httpStatusCode === 404
+      ) {
         return false;
       }
       this.logger.error(`Error checking object ${objectKey}:`, error);
@@ -144,7 +162,11 @@ export class S3StorageService implements IStorageService, OnModuleInit {
     }
   }
 
-  async set(key: string, value: Buffer, namespace: StorageNamespace): Promise<boolean> {
+  async set(
+    key: string,
+    value: Buffer,
+    namespace: StorageNamespace,
+  ): Promise<boolean> {
     const objectKey = this.buildObjectKey(key, namespace);
 
     try {

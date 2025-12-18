@@ -27,7 +27,11 @@ export interface IStorageService {
    * @param namespace - The storage namespace (scenes, rooms, files)
    * @returns true if successful
    */
-  set(key: string, value: Buffer, namespace: StorageNamespace): Promise<boolean>;
+  set(
+    key: string,
+    value: Buffer,
+    namespace: StorageNamespace,
+  ): Promise<boolean>;
 
   /**
    * Check if a key exists in storage

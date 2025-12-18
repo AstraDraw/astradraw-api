@@ -6,7 +6,7 @@ import { IStorageService, StorageNamespace } from './storage.interface';
 /**
  * Keyv-based storage service implementation.
  * Supports PostgreSQL, MongoDB, Redis, MySQL, SQLite, and in-memory storage.
- * 
+ *
  * Configuration via environment variables:
  * - STORAGE_URI: Keyv connection string (e.g., postgres://user:pass@host:5432/db)
  * - STORAGE_URI_FILE: Path to file containing STORAGE_URI (for Docker secrets)
@@ -39,7 +39,9 @@ export class KeyvStorageService implements IStorageService, OnModuleInit {
       this.storagesMap.set(namespace, keyv);
     }
 
-    this.logger.log(`Keyv storage initialized with namespaces: ${Object.values(StorageNamespace).join(', ')}`);
+    this.logger.log(
+      `Keyv storage initialized with namespaces: ${Object.values(StorageNamespace).join(', ')}`,
+    );
   }
 
   async get(key: string, namespace: StorageNamespace): Promise<Buffer | null> {
@@ -57,7 +59,11 @@ export class KeyvStorageService implements IStorageService, OnModuleInit {
     return value !== null;
   }
 
-  async set(key: string, value: Buffer, namespace: StorageNamespace): Promise<boolean> {
+  async set(
+    key: string,
+    value: Buffer,
+    namespace: StorageNamespace,
+  ): Promise<boolean> {
     const keyv = this.storagesMap.get(namespace);
     if (!keyv) {
       this.logger.error(`No storage found for namespace ${namespace}`);

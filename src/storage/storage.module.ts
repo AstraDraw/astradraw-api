@@ -9,7 +9,7 @@ const logger = new Logger('StorageModule');
 /**
  * Dynamic storage provider factory.
  * Selects storage implementation based on STORAGE_BACKEND environment variable.
- * 
+ *
  * Supported values:
  * - 's3' or 'minio': Use S3StorageService (MinIO, AWS S3, etc.)
  * - 'keyv' (default): Use KeyvStorageService (PostgreSQL, MongoDB, Redis, etc.)
@@ -18,7 +18,7 @@ const storageProvider = {
   provide: STORAGE_SERVICE,
   useFactory: () => {
     const backend = getSecret('STORAGE_BACKEND') || 'keyv';
-    
+
     logger.log(`Storage backend: ${backend}`);
 
     switch (backend.toLowerCase()) {
