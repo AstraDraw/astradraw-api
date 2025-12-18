@@ -6,7 +6,7 @@ import { hasBody } from 'type-is';
 // so we tell raw parser to check if there is a body
 const rawParserMiddleware = raw({
   type: hasBody,
-  limit: process.env.BODY_LIMIT ?? '50mb',
+  limit: process.env.BODY_LIMIT ?? '200mb',
 });
 
 @Injectable()
