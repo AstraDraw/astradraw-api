@@ -21,7 +21,7 @@ export class FilesController {
 
   constructor(
     @Inject(STORAGE_SERVICE) private storageService: IStorageService,
-  ) {}
+  ) { }
 
   @Get(':id')
   @Header('content-type', 'application/octet-stream')
@@ -30,7 +30,8 @@ export class FilesController {
     this.logger.debug(`Get image ${params.id}`);
 
     if (!data) {
-      throw new NotFoundException();
+      res.status(204).send();
+      return;
     }
 
     const stream = new Readable();

@@ -30,7 +30,8 @@ export class RoomsController {
     this.logger.debug(`Get room ${params.id}`);
 
     if (!data) {
-      throw new NotFoundException();
+      res.status(204).send();
+      return;
     }
 
     const stream = new Readable();
