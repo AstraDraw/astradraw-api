@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Header,
+  Inject,
   InternalServerErrorException,
   Logger,
   NotFoundException,
@@ -11,16 +12,19 @@ import {
   Res,
 } from '@nestjs/common';
 import { Response } from 'express';
-import { StorageNamespace, StorageService } from 'src/storage/storage.service';
+import { IStorageService, STORAGE_SERVICE, StorageNamespace } from '../storage/storage.interface';
 import { Readable } from 'stream';
 import { customAlphabet } from 'nanoid';
 
 @Controller('scenes')
 export class ScenesController {
   private readonly logger = new Logger(ScenesController.name);
-  namespace = StorageNamespace.SCENES;
+  private readonly namespace = StorageNamespace.SCENES;
 
-  constructor(private storageService: StorageService) {}
+  constructor(
+    @Inject(STORAGE_SERVICE) private storageService: IStorageService,
+  ) {}
+
   @Get(':id')
   @Header('content-type', 'application/octet-stream')
   async findOne(@Param() params, @Res() res: Response): Promise<void> {
@@ -44,7 +48,7 @@ export class ScenesController {
     const id = nanoid();
 
     // Check for collision
-    if (await this.storageService.get(id, this.namespace)) {
+    if (await this.storageService.has(id, this.namespace)) {
       throw new InternalServerErrorException();
     }
 

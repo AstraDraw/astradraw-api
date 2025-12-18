@@ -22,11 +22,13 @@ WORKDIR /app
 
 COPY package.json .
 COPY package-lock.json .
-RUN npm install
+RUN npm ci
 
 COPY . .
-RUN npm ci --prod
 RUN npx nest build
+
+# Remove devDependencies for smaller image
+RUN npm ci --omit=dev
 
 
 FROM node:20-alpine

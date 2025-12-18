@@ -1,0 +1,16 @@
+{
+  "_comment": "Optional Keyv adapters for alternative databases. Add to package.json dependencies if needed.",
+  "optionalDependencies": {
+    "@keyv/mongo": "^1.2.1",
+    "@keyv/mysql": "^1.7.5",
+    "@keyv/redis": "^2.8.5",
+    "@keyv/sqlite": "^2.0.3",
+    "sqlite3": "^5.1.7"
+  },
+  "_install_instructions": [
+    "To add MongoDB support:   npm install @keyv/mongo",
+    "To add MySQL support:     npm install @keyv/mysql",
+    "To add Redis support:     npm install @keyv/redis",
+    "To add SQLite support:    npm install @keyv/sqlite sqlite3"
+  ]
+}

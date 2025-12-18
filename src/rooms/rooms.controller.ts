@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Header,
+  Inject,
   Logger,
   NotFoundException,
   Param,
@@ -10,15 +11,17 @@ import {
   Res,
 } from '@nestjs/common';
 import { Response } from 'express';
-import { StorageNamespace, StorageService } from 'src/storage/storage.service';
+import { IStorageService, STORAGE_SERVICE, StorageNamespace } from '../storage/storage.interface';
 import { Readable } from 'stream';
 
 @Controller('rooms')
 export class RoomsController {
   private readonly logger = new Logger(RoomsController.name);
-  namespace = StorageNamespace.ROOMS;
+  private readonly namespace = StorageNamespace.ROOMS;
 
-  constructor(private storageService: StorageService) {}
+  constructor(
+    @Inject(STORAGE_SERVICE) private storageService: IStorageService,
+  ) {}
 
   @Get(':id')
   @Header('content-type', 'application/octet-stream')
