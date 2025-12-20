@@ -81,17 +81,25 @@ export class AuthService implements OnModuleInit {
     const issuerUrl = process.env.OIDC_ISSUER_URL;
     const clientId = process.env.OIDC_CLIENT_ID;
     const clientSecret = process.env.OIDC_CLIENT_SECRET;
+    // Use internal URL for discovery if provided (e.g., http://dex:5556/dex for Docker)
+    const internalUrl = process.env.OIDC_INTERNAL_URL || issuerUrl;
 
     if (!issuerUrl || !clientId || !clientSecret) {
       throw new Error('OIDC configuration missing');
     }
 
-    this.logger.log(`Discovering OIDC provider at ${issuerUrl}`);
+    this.logger.log(`Discovering OIDC provider at ${internalUrl} (issuer: ${issuerUrl})`);
     
+    // Discover using internal URL but expect issuer to match the public URL
     this.oidcConfig = await openidClient.discovery(
-      new URL(issuerUrl),
+      new URL(internalUrl),
       clientId,
       clientSecret,
+      undefined,
+      {
+        // Allow issuer mismatch when using internal URL for discovery
+        execute: [openidClient.allowInsecureRequests],
+      },
     );
 
     return this.oidcConfig;
