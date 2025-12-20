@@ -119,12 +119,17 @@ export class TalktrackController {
         },
       );
 
-      const status = response.data?.data?.status || 'processing';
-      this.logger.log(`Video ${videoId} status: ${status}`);
+      // Kinescope status values: pending, uploading, pre-processing, processing, aborted, done, error
+      const kinescopeStatus = response.data?.data?.status || 'processing';
+      this.logger.log(`Video ${videoId} Kinescope status: ${kinescopeStatus}`);
+
+      // Map Kinescope status to our status
+      const status = kinescopeStatus === 'done' ? 'ready' : 'processing';
 
       return {
         videoId,
-        status: status === 'ready' ? 'ready' : 'processing',
+        status,
+        kinescopeStatus, // Include original status for debugging
       };
     } catch (error) {
       this.logger.error(`Failed to check video status: ${error.message}`);
