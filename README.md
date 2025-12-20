@@ -47,6 +47,8 @@ Any environment variable supports a `_FILE` suffix to read from files (Docker Sw
 | `GLOBAL_PREFIX` | API prefix for all routes | `/api/v2` | ✅ |
 | `LOG_LEVEL` | Log level | `warn` | ✅ |
 | `BODY_LIMIT` | Payload size limit | `50mb` | ✅ |
+| `KINESCOPE_API_KEY` | Kinescope API key for Talktrack | `""` | ✅ |
+| `KINESCOPE_PROJECT_ID` | Kinescope project/folder ID | `""` | ✅ |
 
 ### Supported Databases (via Keyv)
 
@@ -166,6 +168,26 @@ volumes:
 - `GET /api/v2/rooms/:id` - Load room
 - `POST /api/v2/files` - Upload files
 - `GET /api/v2/files/:id` - Download file
+- `POST /api/v2/talktrack/upload` - Upload Talktrack video to Kinescope
+- `DELETE /api/v2/talktrack/:videoId` - Delete Talktrack video from Kinescope
+
+## Talktrack Configuration
+
+To enable Talktrack video recording proxy (keeps API keys server-side):
+
+```bash
+# Set Kinescope credentials
+KINESCOPE_API_KEY=your_api_key
+KINESCOPE_PROJECT_ID=your_project_id
+
+# Or use Docker secrets
+KINESCOPE_API_KEY_FILE=/run/secrets/kinescope_api_key
+KINESCOPE_PROJECT_ID_FILE=/run/secrets/kinescope_project_id
+```
+
+Get your Kinescope credentials at https://app.kinescope.io/
+
+The frontend will automatically use the proxy if `VITE_APP_HTTP_STORAGE_BACKEND_URL` is configured. This keeps your Kinescope API key secure on the server instead of exposing it in the browser.
 
 ## Deployment
 
