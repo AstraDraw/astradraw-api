@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Delete,
+  Get,
   Body,
   Param,
   Logger,
@@ -97,6 +98,40 @@ export class TalktrackController {
       throw new InternalServerErrorException(
         'Failed to delete video from Kinescope',
       );
+    }
+  }
+
+  @Get(':videoId/status')
+  async getStatus(@Param('videoId') videoId: string) {
+    if (!this.kinescopeApiKey) {
+      throw new InternalServerErrorException('Kinescope not configured');
+    }
+
+    try {
+      this.logger.log(`Checking video status: ${videoId}`);
+
+      const response = await axios.get(
+        `${this.kinescopeApiUrl}/videos/${videoId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${this.kinescopeApiKey}`,
+          },
+        },
+      );
+
+      const status = response.data?.data?.status || 'processing';
+      this.logger.log(`Video ${videoId} status: ${status}`);
+
+      return {
+        videoId,
+        status: status === 'ready' ? 'ready' : 'processing',
+      };
+    } catch (error) {
+      this.logger.error(`Failed to check video status: ${error.message}`);
+      return {
+        videoId,
+        status: 'error',
+      };
     }
   }
 }
