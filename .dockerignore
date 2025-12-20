@@ -1,3 +1,9 @@
 .git
 node_modules
 Dockerfile
+.env
+.env.*
+dist
+coverage
+*.log
+.cursor

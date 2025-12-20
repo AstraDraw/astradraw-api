@@ -1,6 +1,8 @@
 import {
   Controller,
   Get,
+  Post,
+  Body,
   Query,
   Res,
   UnauthorizedException,
@@ -14,6 +16,17 @@ import { JwtAuthGuard } from './jwt.guard';
 import { CurrentUser } from './current-user.decorator';
 import { User } from '@prisma/client';
 
+interface LocalLoginDto {
+  username: string;
+  password: string;
+}
+
+interface RegisterDto {
+  email: string;
+  password: string;
+  name?: string;
+}
+
 @Controller('auth')
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
@@ -21,13 +34,96 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   /**
-   * Check if OIDC is configured
+   * Check authentication status and available methods
    */
   @Get('status')
   getStatus() {
     return {
       oidcConfigured: this.authService.isOidcConfigured(),
+      localAuthEnabled: this.authService.isLocalAuthEnabled(),
+      registrationEnabled: this.authService.isRegistrationEnabled(),
     };
+  }
+
+  /**
+   * Register a new user with email/password
+   */
+  @Post('register')
+  async register(
+    @Body() dto: RegisterDto,
+    @Res() res: Response,
+  ) {
+    const { accessToken, user } = await this.authService.registerUser({
+      email: dto.email,
+      password: dto.password,
+      name: dto.name,
+    });
+
+    // Set JWT as HttpOnly cookie
+    res.cookie('astradraw_token', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/',
+    });
+
+    this.logger.log(`New user registered: ${user.email}`);
+
+    return res.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatarUrl: user.avatarUrl,
+      },
+    });
+  }
+
+  /**
+   * Local login with username/password
+   * Used when OIDC is not configured or for admin access
+   */
+  @Post('login/local')
+  async loginLocal(
+    @Body() dto: LocalLoginDto,
+    @Res() res: Response,
+  ) {
+    if (!this.authService.isLocalAuthEnabled()) {
+      throw new UnauthorizedException('Local authentication is disabled');
+    }
+
+    try {
+      const { accessToken, user } = await this.authService.authenticateLocal(
+        dto.username,
+        dto.password,
+      );
+
+      // Set JWT as HttpOnly cookie
+      res.cookie('astradraw_token', accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        path: '/',
+      });
+
+      this.logger.log(`Local user ${user.email} logged in successfully`);
+
+      return res.json({
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          avatarUrl: user.avatarUrl,
+        },
+      });
+    } catch (error) {
+      this.logger.error(`Local login failed: ${error.message}`);
+      throw new UnauthorizedException('Invalid username or password');
+    }
   }
 
   /**

@@ -9,6 +9,12 @@ export interface UpsertUserDto {
   avatarUrl?: string;
 }
 
+export interface CreateLocalUserDto {
+  email: string;
+  passwordHash: string;
+  name?: string;
+}
+
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
@@ -85,6 +91,34 @@ export class UsersService {
   async getAll(): Promise<User[]> {
     return this.prisma.user.findMany({
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /**
+   * Create a new local user with password authentication
+   */
+  async createLocalUser(data: CreateLocalUserDto): Promise<User> {
+    const { email, passwordHash, name } = data;
+
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        name,
+      },
+    });
+
+    this.logger.log(`Created new local user: ${email}`);
+    return user;
+  }
+
+  /**
+   * Update user's password hash
+   */
+  async updatePasswordHash(userId: string, passwordHash: string): Promise<User> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
     });
   }
 }

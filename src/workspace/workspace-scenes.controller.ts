@@ -284,6 +284,52 @@ export class WorkspaceScenesController {
   }
 
   /**
+   * Duplicate a scene
+   */
+  @Post(':id/duplicate')
+  async duplicateScene(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+  ): Promise<SceneResponse> {
+    const scene = await this.prisma.scene.findUnique({
+      where: { id },
+    });
+
+    if (!scene) {
+      throw new NotFoundException('Scene not found');
+    }
+
+    // Check ownership or public access
+    if (scene.userId !== user.id && !scene.isPublic) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    // Generate a unique storage key for the new scene
+    const nanoid = customAlphabet('0123456789abcdefghijklmnopqrstuvwxyz', 16);
+    const newStorageKey = `ws_${user.id}_${nanoid()}`;
+
+    // Copy scene data from storage
+    const originalData = await this.storageService.get(scene.storageKey, this.namespace);
+    if (originalData) {
+      await this.storageService.set(newStorageKey, originalData, this.namespace);
+    }
+
+    // Create new scene record with "(Copy)" suffix
+    const newScene = await this.prisma.scene.create({
+      data: {
+        title: `${scene.title} (Copy)`,
+        thumbnailUrl: scene.thumbnailUrl,
+        storageKey: newStorageKey,
+        userId: user.id,
+        isPublic: false, // Duplicates are always private initially
+      },
+    });
+
+    this.logger.log(`Duplicated scene ${id} to ${newScene.id} for user ${user.email}`);
+    return this.toSceneResponse(newScene);
+  }
+
+  /**
    * Start collaboration on a scene (generate room ID)
    */
   @Post(':id/collaborate')
