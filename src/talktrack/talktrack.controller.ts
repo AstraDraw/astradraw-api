@@ -17,7 +17,8 @@ export class TalktrackController {
   private readonly logger = new Logger(TalktrackController.name);
   private readonly kinescopeApiKey: string;
   private readonly kinescopeProjectId: string;
-  private readonly kinescopeUploadUrl = 'https://uploader.kinescope.io/v2/video';
+  private readonly kinescopeUploadUrl =
+    'https://uploader.kinescope.io/v2/video';
   private readonly kinescopeApiUrl = 'https://api.kinescope.io/v1';
 
   constructor() {

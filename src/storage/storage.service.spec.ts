@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { KeyvStorageService } from './keyv-storage.service';
-import { S3StorageService } from './s3-storage.service';
 import { StorageModule } from './storage.module';
 import { STORAGE_SERVICE, IStorageService } from './storage.interface';
 

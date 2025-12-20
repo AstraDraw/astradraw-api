@@ -8,9 +8,8 @@ import {
   UnauthorizedException,
   Logger,
   UseGuards,
-  Req,
 } from '@nestjs/common';
-import { Response, Request } from 'express';
+import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt.guard';
 import { CurrentUser } from './current-user.decorator';
@@ -49,10 +48,7 @@ export class AuthController {
    * Register a new user with email/password
    */
   @Post('register')
-  async register(
-    @Body() dto: RegisterDto,
-    @Res() res: Response,
-  ) {
+  async register(@Body() dto: RegisterDto, @Res() res: Response) {
     const { accessToken, user } = await this.authService.registerUser({
       email: dto.email,
       password: dto.password,
@@ -86,10 +82,7 @@ export class AuthController {
    * Used when OIDC is not configured or for admin access
    */
   @Post('login/local')
-  async loginLocal(
-    @Body() dto: LocalLoginDto,
-    @Res() res: Response,
-  ) {
+  async loginLocal(@Body() dto: LocalLoginDto, @Res() res: Response) {
     if (!this.authService.isLocalAuthEnabled()) {
       throw new UnauthorizedException('Local authentication is disabled');
     }
@@ -131,17 +124,14 @@ export class AuthController {
    * Redirects to Authentik login page
    */
   @Get('login')
-  async login(
-    @Query('redirect') redirect: string,
-    @Res() res: Response,
-  ) {
+  async login(@Query('redirect') redirect: string, @Res() res: Response) {
     if (!this.authService.isOidcConfigured()) {
       throw new UnauthorizedException('OIDC is not configured');
     }
 
     // Generate random state for CSRF protection
     const state = redirect || '/';
-    
+
     try {
       const authUrl = await this.authService.getAuthorizationUrl(state);
       this.logger.log(`Redirecting to OIDC provider`);
@@ -176,19 +166,24 @@ export class AuthController {
     }
 
     try {
-      const { accessToken, user } = await this.authService.handleCallback(code, state);
+      const { accessToken, user } = await this.authService.handleCallback(
+        code,
+        state,
+      );
 
       // Decode state to get original redirect URL
       let redirectUrl = '/';
       try {
-        const stateData = JSON.parse(Buffer.from(state, 'base64url').toString());
+        const stateData = JSON.parse(
+          Buffer.from(state, 'base64url').toString(),
+        );
         redirectUrl = stateData.state || '/';
       } catch {
         // Use default redirect
       }
 
       const appUrl = process.env.APP_URL || 'http://localhost';
-      
+
       // Set JWT as HttpOnly cookie
       res.cookie('astradraw_token', accessToken, {
         httpOnly: true,
@@ -199,7 +194,7 @@ export class AuthController {
       });
 
       this.logger.log(`User ${user.email} logged in successfully`);
-      
+
       // Redirect to app with success
       res.redirect(`${appUrl}${redirectUrl}#auth=success`);
     } catch (error) {

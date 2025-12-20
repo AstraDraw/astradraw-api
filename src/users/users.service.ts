@@ -64,7 +64,7 @@ export class UsersService {
     } else {
       // Check if user exists by email (migration case)
       const existingByEmail = await this.findByEmail(email);
-      
+
       if (existingByEmail) {
         // Link existing user to OIDC
         user = await this.prisma.user.update({
@@ -120,7 +120,10 @@ export class UsersService {
   /**
    * Update user's password hash
    */
-  async updatePasswordHash(userId: string, passwordHash: string): Promise<User> {
+  async updatePasswordHash(
+    userId: string,
+    passwordHash: string,
+  ): Promise<User> {
     return this.prisma.user.update({
       where: { id: userId },
       data: { passwordHash },
@@ -132,7 +135,7 @@ export class UsersService {
    */
   async updateProfile(userId: string, data: UpdateProfileDto): Promise<User> {
     const updateData: Partial<User> = {};
-    
+
     if (data.name !== undefined) {
       updateData.name = data.name;
     }
@@ -162,6 +165,7 @@ export class UsersService {
     }
 
     // Remove sensitive data
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash, ...profile } = user;
     return profile;
   }

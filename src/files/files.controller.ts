@@ -5,7 +5,6 @@ import {
   Header,
   Inject,
   Logger,
-  NotFoundException,
   Param,
   Put,
   Res,

@@ -12,12 +12,7 @@ import { UsersModule } from './users/users.module';
 import { WorkspaceScenesController } from './workspace/workspace-scenes.controller';
 
 @Module({
-  imports: [
-    StorageModule,
-    PrismaModule,
-    AuthModule,
-    UsersModule,
-  ],
+  imports: [StorageModule, PrismaModule, AuthModule, UsersModule],
   controllers: [
     ScenesController,
     RoomsController,
@@ -29,6 +24,9 @@ import { WorkspaceScenesController } from './workspace/workspace-scenes.controll
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(RawParserMiddleware).forRoutes('**');
+    consumer
+      .apply(RawParserMiddleware)
+      .exclude('users/me/avatar') // Exclude multipart upload route
+      .forRoutes('**');
   }
 }

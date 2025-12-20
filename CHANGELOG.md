@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.3] - 2025-12-21
+
+### Fixed
+
+- **Duplicate API Prefix Bug**
+  - Fixed `UsersController` routes mapped to `/api/v2/api/v2/users/me`
+  - Changed `@Controller('api/v2/users')` to `@Controller('users')` since global prefix already set
+  - Routes now correctly mapped to `/api/v2/users/me`
+
+- **User Profile `req.user.sub` Bug**
+  - Fixed `getProfile` returning undefined user ID
+  - Changed `req.user.sub` to `req.user.id` (JWT strategy returns full User object)
+
+- **Multipart Upload Bug**
+  - Excluded avatar upload route from `RawParserMiddleware`
+  - Fixed "Multipart: Unexpected end of form" error on avatar upload
+
+- **ESLint Errors**
+  - Removed unused imports across multiple files
+  - Fixed `passwordHash` unused variable warnings with eslint-disable comments
+
 ## [0.5.2] - 2025-12-20
 
 ### Added

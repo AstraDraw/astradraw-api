@@ -10,8 +10,6 @@ import {
   Logger,
   NotFoundException,
   ForbiddenException,
-  InternalServerErrorException,
-  Headers,
 } from '@nestjs/common';
 import axios from 'axios';
 import { JwtAuthGuard } from '../auth/jwt.guard';
@@ -237,9 +235,7 @@ export class SceneTalktrackController {
           `Deleted video ${recording.kinescopeVideoId} from Kinescope`,
         );
       } catch (error) {
-        this.logger.error(
-          `Failed to delete from Kinescope: ${error.message}`,
-        );
+        this.logger.error(`Failed to delete from Kinescope: ${error.message}`);
         // Continue with database deletion even if Kinescope fails
       }
     }
@@ -299,4 +295,3 @@ export class SceneTalktrackController {
     };
   }
 }
-

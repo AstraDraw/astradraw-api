@@ -10,7 +10,7 @@ const cookieOrHeaderExtractor = (req: Request): string | null => {
   if (req?.cookies?.astradraw_token) {
     return req.cookies.astradraw_token;
   }
-  
+
   // Fall back to Authorization header
   return ExtractJwt.fromAuthHeaderAsBearerToken()(req);
 };

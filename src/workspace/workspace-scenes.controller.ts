@@ -130,7 +130,10 @@ export class WorkspaceScenesController {
     }
 
     // Get data from storage
-    const data = await this.storageService.get(scene.storageKey, this.namespace);
+    const data = await this.storageService.get(
+      scene.storageKey,
+      this.namespace,
+    );
 
     if (!data) {
       throw new NotFoundException('Scene data not found');
@@ -156,9 +159,8 @@ export class WorkspaceScenesController {
 
     // If data is provided, store it
     if (dto.data) {
-      const dataBuffer = typeof dto.data === 'string' 
-        ? Buffer.from(dto.data)
-        : dto.data;
+      const dataBuffer =
+        typeof dto.data === 'string' ? Buffer.from(dto.data) : dto.data;
       await this.storageService.set(storageKey, dataBuffer, this.namespace);
     }
 
@@ -199,10 +201,13 @@ export class WorkspaceScenesController {
 
     // Update storage if data is provided
     if (dto.data) {
-      const dataBuffer = typeof dto.data === 'string'
-        ? Buffer.from(dto.data)
-        : dto.data;
-      await this.storageService.set(scene.storageKey, dataBuffer, this.namespace);
+      const dataBuffer =
+        typeof dto.data === 'string' ? Buffer.from(dto.data) : dto.data;
+      await this.storageService.set(
+        scene.storageKey,
+        dataBuffer,
+        this.namespace,
+      );
     }
 
     // Update scene record
@@ -210,7 +215,8 @@ export class WorkspaceScenesController {
       where: { id },
       data: {
         title: dto.title !== undefined ? dto.title : scene.title,
-        thumbnailUrl: dto.thumbnail !== undefined ? dto.thumbnail : scene.thumbnailUrl,
+        thumbnailUrl:
+          dto.thumbnail !== undefined ? dto.thumbnail : scene.thumbnailUrl,
       },
     });
 
@@ -309,9 +315,16 @@ export class WorkspaceScenesController {
     const newStorageKey = `ws_${user.id}_${nanoid()}`;
 
     // Copy scene data from storage
-    const originalData = await this.storageService.get(scene.storageKey, this.namespace);
+    const originalData = await this.storageService.get(
+      scene.storageKey,
+      this.namespace,
+    );
     if (originalData) {
-      await this.storageService.set(newStorageKey, originalData, this.namespace);
+      await this.storageService.set(
+        newStorageKey,
+        originalData,
+        this.namespace,
+      );
     }
 
     // Create new scene record with "(Copy)" suffix
@@ -325,7 +338,9 @@ export class WorkspaceScenesController {
       },
     });
 
-    this.logger.log(`Duplicated scene ${id} to ${newScene.id} for user ${user.email}`);
+    this.logger.log(
+      `Duplicated scene ${id} to ${newScene.id} for user ${user.email}`,
+    );
     return this.toSceneResponse(newScene);
   }
 

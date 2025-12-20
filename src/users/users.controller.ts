@@ -15,13 +15,11 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { UsersService, UpdateProfileDto } from './users.service';
 
-@Controller('api/v2/users')
+@Controller('users')
 export class UsersController {
   private readonly logger = new Logger(UsersController.name);
 
-  constructor(
-    private readonly usersService: UsersService,
-  ) {}
+  constructor(private readonly usersService: UsersService) {}
 
   /**
    * Get current user's profile
@@ -29,7 +27,7 @@ export class UsersController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async getProfile(@Request() req: any) {
-    const profile = await this.usersService.getProfile(req.user.sub);
+    const profile = await this.usersService.getProfile(req.user.id);
     if (!profile) {
       throw new BadRequestException('User not found');
     }
@@ -45,9 +43,10 @@ export class UsersController {
     @Request() req: any,
     @Body() updateDto: UpdateProfileDto,
   ) {
-    const user = await this.usersService.updateProfile(req.user.sub, updateDto);
-    
+    const user = await this.usersService.updateProfile(req.user.id, updateDto);
+
     // Return profile without password hash
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash, ...profile } = user;
     return profile;
   }
@@ -59,18 +58,23 @@ export class UsersController {
    */
   @Post('me/avatar')
   @UseGuards(JwtAuthGuard)
-  @UseInterceptors(FileInterceptor('avatar', {
-    limits: {
-      fileSize: 2 * 1024 * 1024, // 2MB max for data URL storage
-    },
-    fileFilter: (req, file, callback) => {
-      if (!file.mimetype.match(/^image\/(jpeg|png|gif|webp)$/)) {
-        callback(new BadRequestException('Only image files are allowed'), false);
-      } else {
-        callback(null, true);
-      }
-    },
-  }))
+  @UseInterceptors(
+    FileInterceptor('avatar', {
+      limits: {
+        fileSize: 2 * 1024 * 1024, // 2MB max for data URL storage
+      },
+      fileFilter: (req, file, callback) => {
+        if (!file.mimetype.match(/^image\/(jpeg|png|gif|webp)$/)) {
+          callback(
+            new BadRequestException('Only image files are allowed'),
+            false,
+          );
+        } else {
+          callback(null, true);
+        }
+      },
+    }),
+  )
   async uploadAvatar(
     @Request() req: any,
     @UploadedFile() file: Express.Multer.File,
@@ -79,7 +83,7 @@ export class UsersController {
       throw new BadRequestException('No file uploaded');
     }
 
-    const userId = req.user.sub;
+    const userId = req.user.id;
     this.logger.log(`Uploading avatar for user ${userId}`);
 
     try {
@@ -90,6 +94,7 @@ export class UsersController {
       // Update user profile with new avatar URL
       const user = await this.usersService.updateProfile(userId, { avatarUrl });
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { passwordHash, ...profile } = user;
       return {
         ...profile,
@@ -107,11 +112,14 @@ export class UsersController {
   @Put('me/avatar/delete')
   @UseGuards(JwtAuthGuard)
   async deleteAvatar(@Request() req: any) {
-    const userId = req.user.sub;
+    const userId = req.user.id;
 
     // Update user profile to remove avatar URL
-    const user = await this.usersService.updateProfile(userId, { avatarUrl: null });
+    const user = await this.usersService.updateProfile(userId, {
+      avatarUrl: null,
+    });
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash, ...profile } = user;
     return {
       ...profile,
@@ -119,4 +127,3 @@ export class UsersController {
     };
   }
 }
-

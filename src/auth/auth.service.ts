@@ -1,4 +1,11 @@
-import { Injectable, Logger, UnauthorizedException, ConflictException, BadRequestException, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  UnauthorizedException,
+  ConflictException,
+  BadRequestException,
+  OnModuleInit,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import * as openidClient from 'openid-client';
@@ -50,12 +57,11 @@ export class AuthService implements OnModuleInit {
    * Ensure default admin user exists in database
    */
   private async ensureDefaultAdminExists() {
-    const adminUsername = process.env.ADMIN_USERNAME || DEFAULT_ADMIN_USERNAME;
     const adminEmail = process.env.ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL;
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin';
-    
+
     const existingAdmin = await this.usersService.findByEmail(adminEmail);
-    
+
     if (!existingAdmin) {
       // Create admin with bcrypt-hashed password
       const passwordHash = await bcrypt.hash(adminPassword, BCRYPT_SALT_ROUNDS);
@@ -68,7 +74,10 @@ export class AuthService implements OnModuleInit {
     } else if (!existingAdmin.passwordHash) {
       // Migrate existing admin user to bcrypt
       const passwordHash = await bcrypt.hash(adminPassword, BCRYPT_SALT_ROUNDS);
-      await this.usersService.updatePasswordHash(existingAdmin.id, passwordHash);
+      await this.usersService.updatePasswordHash(
+        existingAdmin.id,
+        passwordHash,
+      );
       this.logger.log(`Admin user migrated to bcrypt: ${adminEmail}`);
     }
   }
@@ -88,8 +97,10 @@ export class AuthService implements OnModuleInit {
       throw new Error('OIDC configuration missing');
     }
 
-    this.logger.log(`Discovering OIDC provider at ${internalUrl} (issuer: ${issuerUrl})`);
-    
+    this.logger.log(
+      `Discovering OIDC provider at ${internalUrl} (issuer: ${issuerUrl})`,
+    );
+
     // Discover using internal URL but expect issuer to match the public URL
     this.oidcConfig = await openidClient.discovery(
       new URL(internalUrl),
@@ -120,11 +131,11 @@ export class AuthService implements OnModuleInit {
     // Local auth is enabled if OIDC is not configured, or explicitly enabled
     const explicitlyEnabled = process.env.ENABLE_LOCAL_AUTH === 'true';
     const explicitlyDisabled = process.env.ENABLE_LOCAL_AUTH === 'false';
-    
+
     if (explicitlyDisabled) {
       return false;
     }
-    
+
     return explicitlyEnabled || !this.isOidcConfigured();
   }
 
@@ -139,7 +150,9 @@ export class AuthService implements OnModuleInit {
   /**
    * Register a new user with email and password
    */
-  async registerUser(dto: RegisterUserDto): Promise<{ accessToken: string; user: any }> {
+  async registerUser(
+    dto: RegisterUserDto,
+  ): Promise<{ accessToken: string; user: any }> {
     if (!this.isLocalAuthEnabled()) {
       throw new BadRequestException('Local authentication is disabled');
     }
@@ -205,7 +218,7 @@ export class AuthService implements OnModuleInit {
     // Support both email and username for admin
     const adminUsername = process.env.ADMIN_USERNAME || DEFAULT_ADMIN_USERNAME;
     const adminEmail = process.env.ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL;
-    
+
     // Determine email to look up
     let email = emailOrUsername;
     if (emailOrUsername === adminUsername) {
@@ -214,7 +227,7 @@ export class AuthService implements OnModuleInit {
 
     // Find user by email
     const user = await this.usersService.findByEmail(email);
-    
+
     if (!user) {
       this.logger.warn(`Failed login attempt for user: ${emailOrUsername}`);
       throw new UnauthorizedException('Invalid email or password');
@@ -229,7 +242,7 @@ export class AuthService implements OnModuleInit {
 
     // Verify password with bcrypt
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
-    
+
     if (!isPasswordValid) {
       this.logger.warn(`Failed login attempt for user: ${email}`);
       throw new UnauthorizedException('Invalid email or password');
@@ -258,7 +271,8 @@ export class AuthService implements OnModuleInit {
     }
 
     const codeVerifier = openidClient.randomPKCECodeVerifier();
-    const codeChallenge = await openidClient.calculatePKCECodeChallenge(codeVerifier);
+    const codeChallenge =
+      await openidClient.calculatePKCECodeChallenge(codeVerifier);
 
     // Store code verifier in state (encoded)
     const stateData = JSON.stringify({ state, codeVerifier });
@@ -296,16 +310,20 @@ export class AuthService implements OnModuleInit {
     }
 
     // Exchange code for tokens
-    const tokens = await openidClient.authorizationCodeGrant(config, new URL(callbackUrl), {
-      pkceCodeVerifier: codeVerifier,
-    });
+    const tokens = await openidClient.authorizationCodeGrant(
+      config,
+      new URL(callbackUrl),
+      {
+        pkceCodeVerifier: codeVerifier,
+      },
+    );
 
     // Get user info
-    const userInfo = await openidClient.fetchUserInfo(
+    const userInfo = (await openidClient.fetchUserInfo(
       config,
       tokens.access_token,
       tokens.claims()?.sub,
-    ) as OidcUserInfo;
+    )) as OidcUserInfo;
 
     this.logger.log(`User authenticated: ${userInfo.email}`);
 
