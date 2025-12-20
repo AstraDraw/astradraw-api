@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2025-12-20
+
+### Added
+
+- **Scene-Specific Talktrack Storage**
+  - New `TalktrackRecording` model in Prisma schema
+  - Recordings linked to scenes and users (foreign keys with cascade delete)
+  - New `SceneTalktrackController` with CRUD endpoints:
+    - `GET /workspace/scenes/:sceneId/talktracks` - List recordings
+    - `POST /workspace/scenes/:sceneId/talktracks` - Create recording
+    - `PUT /workspace/scenes/:sceneId/talktracks/:id` - Update recording
+    - `DELETE /workspace/scenes/:sceneId/talktracks/:id` - Delete recording
+    - `PUT /workspace/scenes/:sceneId/talktracks/:id/status` - Update status
+  
+- **Permission System**
+  - Scene owner: full CRUD access to recordings
+  - Shared viewers (public scenes): read-only access
+  - Automatic Kinescope video deletion when recording is deleted
+
+### Changed
+
+- Consolidated all database migrations into single `20251220000000_init` migration
+- Migration now includes: users, scenes, collections, and talktrack_recordings tables
+
+### Database
+
+- New `talktrack_recordings` table with indexes on `sceneId` and `userId`
+- Unique constraint on `kinescopeVideoId`
+
 ## [0.3.0] - 2025-12-20
 
 ### Added

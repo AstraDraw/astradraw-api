@@ -4,6 +4,7 @@ import { ScenesController } from './scenes/scenes.controller';
 import { RoomsController } from './rooms/rooms.controller';
 import { FilesController } from './files/files.controller';
 import { TalktrackController } from './talktrack/talktrack.controller';
+import { SceneTalktrackController } from './talktrack/scene-talktrack.controller';
 import { StorageModule } from './storage/storage.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
@@ -22,6 +23,7 @@ import { WorkspaceScenesController } from './workspace/workspace-scenes.controll
     RoomsController,
     FilesController,
     TalktrackController,
+    SceneTalktrackController,
     WorkspaceScenesController,
   ],
 })
