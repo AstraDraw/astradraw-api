@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4] - 2025-12-20
+
+### Added
+
+- **Talktrack Video Proxy** for Kinescope API
+  - New `TalktrackController` with upload and delete endpoints
+  - `POST /api/v2/talktrack/upload` - Proxy video uploads to Kinescope
+  - `DELETE /api/v2/talktrack/:videoId` - Proxy video deletions from Kinescope
+  - Keeps Kinescope API key secure on server-side (not exposed to browser)
+  - Support for `KINESCOPE_API_KEY` and `KINESCOPE_PROJECT_ID` environment variables
+  - Docker secrets support via `_FILE` suffix for both Kinescope credentials
+  - Unit tests for TalktrackController
+
+### Changed
+
+- Added `axios` dependency for HTTP requests to external APIs
+- Updated README with Talktrack configuration documentation
+
+### Technical
+
+- Frontend automatically uses proxy when `VITE_APP_HTTP_STORAGE_BACKEND_URL` is configured
+- Backward compatible - direct browser upload still works if proxy not configured
+
 ## [0.2.3] - 2025-12-19
 
 ### Changed
