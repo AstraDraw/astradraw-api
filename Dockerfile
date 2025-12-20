@@ -1,46 +1,48 @@
-FROM node:20-alpine AS builder
+# AstraDraw API - Backend service for authentication, workspace, and storage
+FROM node:20-slim AS builder
 
 ARG CHINA_MIRROR=false
 
-# enable china mirror when ENABLE_CHINA_MIRROR is true
-RUN if [[ "$CHINA_MIRROR" = "true" ]] ; then \
-    echo "Enable China Alpine Mirror" && \
-    sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories; \
-    fi
-
-RUN if [[ "$CHINA_MIRROR" = "true" ]] ; then \
+# Enable China NPM mirror when CHINA_MIRROR is true
+RUN if [ "$CHINA_MIRROR" = "true" ]; then \
     echo "Enable China NPM Mirror" && \
-    npm install -g cnpm --registry=https://registry.npmmirror.com; \
+    npm install -g cnpm --registry=https://registry.npmmirror.com && \
     npm config set registry https://registry.npmmirror.com; \
     fi
 
-RUN apk add --update python3 make g++ curl openssl
-RUN npm install -g eslint
+# Install OpenSSL for Prisma
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openssl \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN npm install -g @nestjs/cli
 
 WORKDIR /app
 
-COPY package.json .
-COPY package-lock.json .
+# Copy package files and install ALL dependencies (including dev)
+COPY package.json package-lock.json ./
 RUN npm ci
 
 # Copy Prisma schema and generate client
 COPY prisma ./prisma
 RUN npx prisma generate
 
+# Copy source and build
 COPY . .
 RUN npx nest build
 
-# Remove devDependencies for smaller image
-RUN npm ci --omit=dev
-# Re-generate Prisma client after removing devDependencies
+# Remove devDependencies (faster than npm ci --omit=dev)
+RUN npm prune --omit=dev
+# Re-generate Prisma client after pruning
 RUN npx prisma generate
 
 
-FROM node:20-alpine
+FROM node:20-slim
 
 # Install OpenSSL for Prisma
-RUN apk add --no-cache openssl
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openssl \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -54,6 +56,4 @@ USER node
 EXPOSE 8080
 
 # Run migrations on startup, then start the server
-# Use db push for development (handles existing tables gracefully)
-# For production, use: npx prisma migrate deploy
 ENTRYPOINT ["sh", "-c", "npx prisma db push --accept-data-loss 2>/dev/null || npx prisma migrate deploy 2>/dev/null || true; npm run start:prod"]

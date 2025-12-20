@@ -1,6 +1,6 @@
 import { Injectable, Logger, UnauthorizedException, ConflictException, BadRequestException, OnModuleInit } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import * as openidClient from 'openid-client';
 import { UsersService } from '../users/users.service';
 
