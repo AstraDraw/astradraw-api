@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   Logger,
   NotFoundException,
@@ -19,25 +20,31 @@ import { Readable } from 'stream';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
-import { User } from '@prisma/client';
+import { User, WorkspaceRole } from '@prisma/client';
 import { customAlphabet } from 'nanoid';
 import {
   IStorageService,
   STORAGE_SERVICE,
   StorageNamespace,
 } from '../storage/storage.interface';
+import { CollectionsService } from '../collections/collections.service';
+import { WorkspacesService } from '../workspaces/workspaces.service';
+import { TeamsService } from '../teams/teams.service';
 
 // DTOs
 interface CreateSceneDto {
   title?: string;
   thumbnail?: string;
-  data?: Buffer | string; // Scene data (optional, can be provided later)
+  data?: Buffer | string;
+  collectionId?: string;
+  workspaceId?: string;
 }
 
 interface UpdateSceneDto {
   title?: string;
   thumbnail?: string;
   data?: Buffer | string;
+  collectionId?: string;
 }
 
 interface SceneResponse {
@@ -46,10 +53,12 @@ interface SceneResponse {
   thumbnailUrl: string | null;
   storageKey: string;
   roomId: string | null;
+  collectionId: string | null;
   isPublic: boolean;
   lastOpenedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  canEdit: boolean;
 }
 
 @Controller('workspace/scenes')
@@ -61,19 +70,161 @@ export class WorkspaceScenesController {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
+    private readonly collectionsService: CollectionsService,
+    private readonly workspacesService: WorkspacesService,
+    private readonly teamsService: TeamsService,
   ) {}
 
   /**
-   * List all scenes for the current user
+   * Check if user can access a scene (read)
+   */
+  private async canAccessScene(
+    scene: { userId: string; collectionId: string | null; isPublic: boolean },
+    userId: string,
+  ): Promise<boolean> {
+    // Owner always has access
+    if (scene.userId === userId) {
+      return true;
+    }
+
+    // Public scenes are accessible
+    if (scene.isPublic) {
+      return true;
+    }
+
+    // Check collection-based access
+    if (scene.collectionId) {
+      const access = await this.collectionsService.canAccessCollection(
+        scene.collectionId,
+        userId,
+      );
+      return access.canRead;
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if user can edit a scene (write)
+   */
+  private async canEditScene(
+    scene: { userId: string; collectionId: string | null },
+    userId: string,
+  ): Promise<boolean> {
+    // Owner always can edit
+    if (scene.userId === userId) {
+      return true;
+    }
+
+    // Check collection-based write access
+    if (scene.collectionId) {
+      const access = await this.collectionsService.canAccessCollection(
+        scene.collectionId,
+        userId,
+      );
+      return access.canWrite;
+    }
+
+    return false;
+  }
+
+  /**
+   * List scenes for a workspace (filtered by accessible collections)
    */
   @Get()
-  async listScenes(@CurrentUser() user: User): Promise<SceneResponse[]> {
+  async listScenes(
+    @CurrentUser() user: User,
+    @Query('workspaceId') workspaceId?: string,
+    @Query('collectionId') collectionId?: string,
+  ): Promise<SceneResponse[]> {
+    // If workspaceId is provided, list scenes from that workspace
+    if (workspaceId) {
+      return this.listWorkspaceScenes(user, workspaceId, collectionId);
+    }
+
+    // Legacy behavior: list user's own scenes
     const scenes = await this.prisma.scene.findMany({
       where: { userId: user.id },
       orderBy: { updatedAt: 'desc' },
     });
 
-    return scenes.map(this.toSceneResponse);
+    return scenes.map((scene) => this.toSceneResponse(scene, true));
+  }
+
+  /**
+   * List scenes from a specific workspace
+   */
+  private async listWorkspaceScenes(
+    user: User,
+    workspaceId: string,
+    collectionId?: string,
+  ): Promise<SceneResponse[]> {
+    // Check workspace membership
+    const membership = await this.workspacesService.getMembership(
+      workspaceId,
+      user.id,
+    );
+
+    if (!membership) {
+      throw new ForbiddenException('You are not a member of this workspace');
+    }
+
+    const isAdmin = membership.role === WorkspaceRole.ADMIN;
+
+    // Get accessible collections
+    const accessibleCollections = await this.collectionsService.listCollections(
+      workspaceId,
+      user.id,
+    );
+    const accessibleCollectionIds = accessibleCollections.map((c) => c.id);
+    const writeAccessIds = new Set(
+      accessibleCollections.filter((c) => c.canWrite).map((c) => c.id),
+    );
+
+    // Build query filter
+    const whereClause: any = {};
+
+    if (collectionId) {
+      // Filter by specific collection
+      if (!accessibleCollectionIds.includes(collectionId)) {
+        throw new ForbiddenException(
+          'You do not have access to this collection',
+        );
+      }
+      whereClause.collectionId = collectionId;
+    } else {
+      // Filter by all accessible collections in this workspace
+      whereClause.collection = {
+        workspaceId,
+      };
+
+      if (!isAdmin) {
+        // Non-admins can only see scenes in collections they have access to
+        // or their own scenes
+        whereClause.OR = [
+          { collectionId: { in: accessibleCollectionIds } },
+          { userId: user.id },
+        ];
+      }
+    }
+
+    const scenes = await this.prisma.scene.findMany({
+      where: whereClause,
+      orderBy: { updatedAt: 'desc' },
+      include: {
+        collection: {
+          select: { id: true, workspaceId: true },
+        },
+      },
+    });
+
+    return scenes.map((scene) => {
+      const canEdit =
+        scene.userId === user.id ||
+        isAdmin ||
+        (scene.collectionId && writeAccessIds.has(scene.collectionId));
+      return this.toSceneResponse(scene, canEdit);
+    });
   }
 
   /**
@@ -92,8 +243,9 @@ export class WorkspaceScenesController {
       throw new NotFoundException('Scene not found');
     }
 
-    // Check ownership or public access
-    if (scene.userId !== user.id && !scene.isPublic) {
+    // Check access
+    const canAccess = await this.canAccessScene(scene, user.id);
+    if (!canAccess) {
       throw new ForbiddenException('Access denied');
     }
 
@@ -103,7 +255,8 @@ export class WorkspaceScenesController {
       data: { lastOpenedAt: new Date() },
     });
 
-    return this.toSceneResponse(scene);
+    const canEdit = await this.canEditScene(scene, user.id);
+    return this.toSceneResponse(scene, canEdit);
   }
 
   /**
@@ -124,8 +277,9 @@ export class WorkspaceScenesController {
       throw new NotFoundException('Scene not found');
     }
 
-    // Check ownership or public access
-    if (scene.userId !== user.id && !scene.isPublic) {
+    // Check access
+    const canAccess = await this.canAccessScene(scene, user.id);
+    if (!canAccess) {
       throw new ForbiddenException('Access denied');
     }
 
@@ -153,6 +307,14 @@ export class WorkspaceScenesController {
     @Body() dto: CreateSceneDto,
     @CurrentUser() user: User,
   ): Promise<SceneResponse> {
+    // If collectionId is provided, check write access
+    if (dto.collectionId) {
+      await this.collectionsService.requireWriteAccess(
+        dto.collectionId,
+        user.id,
+      );
+    }
+
     // Generate a unique storage key
     const nanoid = customAlphabet('0123456789abcdefghijklmnopqrstuvwxyz', 16);
     const storageKey = `ws_${user.id}_${nanoid()}`;
@@ -171,11 +333,12 @@ export class WorkspaceScenesController {
         thumbnailUrl: dto.thumbnail,
         storageKey,
         userId: user.id,
+        collectionId: dto.collectionId,
       },
     });
 
     this.logger.log(`Created scene ${scene.id} for user ${user.email}`);
-    return this.toSceneResponse(scene);
+    return this.toSceneResponse(scene, true);
   }
 
   /**
@@ -195,8 +358,18 @@ export class WorkspaceScenesController {
       throw new NotFoundException('Scene not found');
     }
 
-    if (scene.userId !== user.id) {
+    // Check write access
+    const canEdit = await this.canEditScene(scene, user.id);
+    if (!canEdit) {
       throw new ForbiddenException('Access denied');
+    }
+
+    // If changing collection, check write access to new collection
+    if (dto.collectionId && dto.collectionId !== scene.collectionId) {
+      await this.collectionsService.requireWriteAccess(
+        dto.collectionId,
+        user.id,
+      );
     }
 
     // Update storage if data is provided
@@ -217,11 +390,13 @@ export class WorkspaceScenesController {
         title: dto.title !== undefined ? dto.title : scene.title,
         thumbnailUrl:
           dto.thumbnail !== undefined ? dto.thumbnail : scene.thumbnailUrl,
+        collectionId:
+          dto.collectionId !== undefined ? dto.collectionId : scene.collectionId,
       },
     });
 
     this.logger.log(`Updated scene ${id}`);
-    return this.toSceneResponse(updatedScene);
+    return this.toSceneResponse(updatedScene, true);
   }
 
   /**
@@ -241,7 +416,9 @@ export class WorkspaceScenesController {
       throw new NotFoundException('Scene not found');
     }
 
-    if (scene.userId !== user.id) {
+    // Check write access
+    const canEdit = await this.canEditScene(scene, user.id);
+    if (!canEdit) {
       throw new ForbiddenException('Access denied');
     }
 
@@ -273,7 +450,9 @@ export class WorkspaceScenesController {
       throw new NotFoundException('Scene not found');
     }
 
-    if (scene.userId !== user.id) {
+    // Check write access
+    const canEdit = await this.canEditScene(scene, user.id);
+    if (!canEdit) {
       throw new ForbiddenException('Access denied');
     }
 
@@ -296,6 +475,7 @@ export class WorkspaceScenesController {
   async duplicateScene(
     @Param('id') id: string,
     @CurrentUser() user: User,
+    @Body() dto?: { collectionId?: string },
   ): Promise<SceneResponse> {
     const scene = await this.prisma.scene.findUnique({
       where: { id },
@@ -305,9 +485,19 @@ export class WorkspaceScenesController {
       throw new NotFoundException('Scene not found');
     }
 
-    // Check ownership or public access
-    if (scene.userId !== user.id && !scene.isPublic) {
+    // Check read access to source scene
+    const canAccess = await this.canAccessScene(scene, user.id);
+    if (!canAccess) {
       throw new ForbiddenException('Access denied');
+    }
+
+    // If target collection specified, check write access
+    const targetCollectionId = dto?.collectionId || scene.collectionId;
+    if (targetCollectionId) {
+      await this.collectionsService.requireWriteAccess(
+        targetCollectionId,
+        user.id,
+      );
     }
 
     // Generate a unique storage key for the new scene
@@ -334,14 +524,55 @@ export class WorkspaceScenesController {
         thumbnailUrl: scene.thumbnailUrl,
         storageKey: newStorageKey,
         userId: user.id,
-        isPublic: false, // Duplicates are always private initially
+        collectionId: targetCollectionId,
+        isPublic: false,
       },
     });
 
     this.logger.log(
       `Duplicated scene ${id} to ${newScene.id} for user ${user.email}`,
     );
-    return this.toSceneResponse(newScene);
+    return this.toSceneResponse(newScene, true);
+  }
+
+  /**
+   * Move a scene to a different collection
+   */
+  @Put(':id/move')
+  async moveScene(
+    @Param('id') id: string,
+    @Body() dto: { collectionId: string | null },
+    @CurrentUser() user: User,
+  ): Promise<SceneResponse> {
+    const scene = await this.prisma.scene.findUnique({
+      where: { id },
+    });
+
+    if (!scene) {
+      throw new NotFoundException('Scene not found');
+    }
+
+    // Check write access to source
+    const canEdit = await this.canEditScene(scene, user.id);
+    if (!canEdit) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    // Check write access to target collection
+    if (dto.collectionId) {
+      await this.collectionsService.requireWriteAccess(
+        dto.collectionId,
+        user.id,
+      );
+    }
+
+    const updatedScene = await this.prisma.scene.update({
+      where: { id },
+      data: { collectionId: dto.collectionId },
+    });
+
+    this.logger.log(`Moved scene ${id} to collection ${dto.collectionId}`);
+    return this.toSceneResponse(updatedScene, true);
   }
 
   /**
@@ -360,14 +591,16 @@ export class WorkspaceScenesController {
       throw new NotFoundException('Scene not found');
     }
 
-    if (scene.userId !== user.id) {
+    // Check write access (only users with write access can start collaboration)
+    const canEdit = await this.canEditScene(scene, user.id);
+    if (!canEdit) {
       throw new ForbiddenException('Access denied');
     }
 
     // Generate room ID and key if not exists
     const nanoid = customAlphabet('0123456789abcdefghijklmnopqrstuvwxyz', 20);
     const roomId = scene.roomId || nanoid();
-    const roomKey = nanoid(); // Always generate new key for security
+    const roomKey = nanoid();
 
     // Update scene with room ID
     await this.prisma.scene.update({
@@ -379,17 +612,19 @@ export class WorkspaceScenesController {
     return { roomId, roomKey };
   }
 
-  private toSceneResponse(scene: any): SceneResponse {
+  private toSceneResponse(scene: any, canEdit: boolean): SceneResponse {
     return {
       id: scene.id,
       title: scene.title,
       thumbnailUrl: scene.thumbnailUrl,
       storageKey: scene.storageKey,
       roomId: scene.roomId,
+      collectionId: scene.collectionId,
       isPublic: scene.isPublic,
       lastOpenedAt: scene.lastOpenedAt?.toISOString() || null,
       createdAt: scene.createdAt.toISOString(),
       updatedAt: scene.updatedAt.toISOString(),
+      canEdit,
     };
   }
 }

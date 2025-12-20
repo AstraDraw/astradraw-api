@@ -1,5 +1,5 @@
 // Prisma Schema for AstraDraw Workspace
-// This schema manages user authentication and scene/workspace metadata
+// This schema manages user authentication, workspaces, teams, and scene metadata
 
 generator client {
   provider = "prisma-client-js"
@@ -9,6 +9,20 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+// =============================================================================
+// Enums
+// =============================================================================
+
+enum WorkspaceRole {
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+// =============================================================================
+// User Model
+// =============================================================================
 
 // User model - stores authenticated users (OIDC or local password auth)
 model User {
@@ -26,10 +40,165 @@ model User {
 
   // Relations
   scenes              Scene[]
-  collections         Collection[]
   talktrackRecordings TalktrackRecording[]
+  workspaceMemberships WorkspaceMember[]
 
   @@map("users")
+}
+
+// =============================================================================
+// Workspace Models
+// =============================================================================
+
+// Workspace model - a shared space for teams to collaborate
+model Workspace {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  avatarUrl   String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  members     WorkspaceMember[]
+  collections Collection[]
+  teams       Team[]
+  inviteLinks InviteLink[]
+
+  @@map("workspaces")
+}
+
+// WorkspaceMember model - links users to workspaces with roles
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  role        WorkspaceRole @default(MEMBER)
+  
+  // Relations
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Team memberships within this workspace
+  teamMemberships TeamMember[]
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+  @@index([userId])
+  @@map("workspace_members")
+}
+
+// InviteLink model - shareable links to join a workspace
+model InviteLink {
+  id          String        @id @default(cuid())
+  code        String        @unique
+  role        WorkspaceRole @default(MEMBER)
+  
+  // Relations
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  // Constraints
+  expiresAt   DateTime?
+  maxUses     Int?
+  uses        Int           @default(0)
+  
+  createdAt   DateTime      @default(now())
+
+  @@index([workspaceId])
+  @@map("invite_links")
+}
+
+// =============================================================================
+// Team Models
+// =============================================================================
+
+// Team model - a named group of workspace members
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  color       String   // Hex color (e.g., "#FF5733")
+  
+  // Relations
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  members     TeamMember[]
+  collections TeamCollection[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([workspaceId])
+  @@map("teams")
+}
+
+// TeamMember model - links workspace members to teams
+model TeamMember {
+  teamId   String
+  team     Team            @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  memberId String
+  member   WorkspaceMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+
+  @@id([teamId, memberId])
+  @@map("team_members")
+}
+
+// TeamCollection model - grants team access to collections
+model TeamCollection {
+  teamId       String
+  team         Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  collectionId String
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  
+  // Permission level
+  canWrite     Boolean    @default(true)
+  
+  createdAt    DateTime   @default(now())
+
+  @@id([teamId, collectionId])
+  @@map("team_collections")
+}
+
+// =============================================================================
+// Collection & Scene Models
+// =============================================================================
+
+// Collection model - folders for organizing scenes within a workspace
+model Collection {
+  id          String   @id @default(cuid())
+  name        String
+  icon        String?  // Emoji or icon identifier
+  color       String?  // Optional color for the collection
+  
+  // Privacy settings
+  isPrivate   Boolean  @default(false)  // If true, only owner can see
+  
+  // Ownership - the user who created this collection
+  userId      String
+  
+  // Workspace association
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  // Relations
+  scenes          Scene[]
+  teamCollections TeamCollection[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([workspaceId])
+  @@map("collections")
 }
 
 // Scene model - stores scene metadata (actual data in S3)
@@ -64,25 +233,9 @@ model Scene {
   @@map("scenes")
 }
 
-// Collection model - folders for organizing scenes
-model Collection {
-  id        String   @id @default(cuid())
-  name      String
-  color     String?  // Optional color for the collection
-  
-  // Ownership
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  // Relations
-  scenes    Scene[]
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-  @@map("collections")
-}
+// =============================================================================
+// Talktrack Models
+// =============================================================================
 
 // TalktrackRecording model - stores video recording metadata linked to scenes
 model TalktrackRecording {

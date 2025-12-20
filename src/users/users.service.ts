@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { User } from '@prisma/client';
+import { User, WorkspaceRole } from '@prisma/client';
 
 export interface UpsertUserDto {
   oidcId: string;
@@ -25,6 +25,52 @@ export class UsersService {
   private readonly logger = new Logger(UsersService.name);
 
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Create a default personal workspace for a new user
+   */
+  private async createDefaultWorkspace(userId: string, userEmail: string): Promise<void> {
+    // Generate a unique slug based on email
+    const baseSlug = userEmail
+      .split('@')[0]
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 30) || 'workspace';
+
+    let slug = baseSlug;
+    let counter = 0;
+
+    while (await this.prisma.workspace.findUnique({ where: { slug } })) {
+      counter++;
+      slug = `${baseSlug}-${counter}`;
+    }
+
+    // Create workspace with user as admin
+    await this.prisma.workspace.create({
+      data: {
+        name: 'My Workspace',
+        slug,
+        members: {
+          create: {
+            userId,
+            role: WorkspaceRole.ADMIN,
+          },
+        },
+        // Also create a default private collection
+        collections: {
+          create: {
+            name: 'Private',
+            icon: '🔒',
+            isPrivate: true,
+            userId: userId,
+          },
+        },
+      },
+    });
+
+    this.logger.log(`Created default workspace "${slug}" for user ${userEmail}`);
+  }
 
   async findById(id: string): Promise<User | null> {
     return this.prisma.user.findUnique({
@@ -87,8 +133,14 @@ export class UsersService {
           },
         });
         this.logger.log(`Created new user: ${email}`);
+
+        // Create default workspace for new user
+        await this.createDefaultWorkspace(user.id, email);
       }
     }
+
+    // Ensure user has at least one workspace (for existing users without workspace)
+    await this.ensureUserHasWorkspace(user.id, user.email);
 
     return user;
   }
@@ -114,6 +166,10 @@ export class UsersService {
     });
 
     this.logger.log(`Created new local user: ${email}`);
+
+    // Create default workspace for new user
+    await this.createDefaultWorkspace(user.id, email);
+
     return user;
   }
 
@@ -150,6 +206,19 @@ export class UsersService {
 
     this.logger.log(`Updated profile for user: ${user.email}`);
     return user;
+  }
+
+  /**
+   * Ensure user has at least one workspace (creates default if none exist)
+   */
+  async ensureUserHasWorkspace(userId: string, email: string): Promise<void> {
+    const workspaceCount = await this.prisma.workspaceMember.count({
+      where: { userId },
+    });
+
+    if (workspaceCount === 0) {
+      await this.createDefaultWorkspace(userId, email);
+    }
   }
 
   /**

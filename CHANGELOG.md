@@ -5,6 +5,69 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2025-12-21
+
+### Added
+
+- **Workspaces Module**
+  - Multi-workspace support with `Workspace` model
+  - `WorkspaceMember` model with role-based access (ADMIN, MEMBER, VIEWER)
+  - `InviteLink` model for shareable workspace invitations
+  - `WorkspacesController` with endpoints:
+    - `GET /api/v2/workspaces` - List user's workspaces
+    - `GET /api/v2/workspaces/:id` - Get workspace details
+    - `POST /api/v2/workspaces` - Create workspace
+    - `PUT /api/v2/workspaces/:id` - Update workspace (admin)
+    - `DELETE /api/v2/workspaces/:id` - Delete workspace (admin)
+    - `GET /api/v2/workspaces/:id/members` - List members
+    - `POST /api/v2/workspaces/:id/members/invite` - Invite by email (admin)
+    - `PUT /api/v2/workspaces/:id/members/:memberId` - Update role (admin)
+    - `DELETE /api/v2/workspaces/:id/members/:memberId` - Remove member
+    - `GET /api/v2/workspaces/:id/invite-links` - List invite links (admin)
+    - `POST /api/v2/workspaces/:id/invite-links` - Create invite link (admin)
+    - `DELETE /api/v2/workspaces/:id/invite-links/:linkId` - Delete link (admin)
+    - `POST /api/v2/workspaces/join` - Join via invite code
+  - `WorkspaceRoleGuard` for role-based access control
+
+- **Teams Module**
+  - `Team` model with name and color
+  - `TeamMember` model for user-team associations
+  - `TeamCollection` model for team-collection access
+  - `TeamsController` with endpoints:
+    - `GET /api/v2/workspaces/:id/teams` - List teams
+    - `POST /api/v2/workspaces/:id/teams` - Create team (admin)
+    - `GET /api/v2/teams/:id` - Get team details
+    - `PUT /api/v2/teams/:id` - Update team (admin)
+    - `DELETE /api/v2/teams/:id` - Delete team (admin)
+
+- **Collections Module**
+  - `Collection` model with name, icon, privacy settings
+  - Private collections visible only to owner
+  - Team-based collection access
+  - `CollectionsController` with endpoints:
+    - `GET /api/v2/workspaces/:id/collections` - List accessible collections
+    - `POST /api/v2/workspaces/:id/collections` - Create collection (admin)
+    - `GET /api/v2/collections/:id` - Get collection details
+    - `PUT /api/v2/collections/:id` - Update collection (admin)
+    - `DELETE /api/v2/collections/:id` - Delete collection (admin)
+
+- **Default Workspace Creation**
+  - New users automatically get a default workspace on signup
+  - Default "Private" collection created with 🔒 icon
+  - User added as ADMIN to their default workspace
+
+### Changed
+
+- `UsersService` now creates default workspace for new users
+- `AuthService.authenticateLocal` ensures user has workspace on login
+- Database schema extended with workspace/team/collection models
+
+### Database Migration
+
+- Added `Workspace`, `WorkspaceMember`, `Team`, `TeamMember`, `TeamCollection`, `InviteLink` models
+- Added `collectionId` to `Scene` model
+- Added `WorkspaceRole` enum (ADMIN, MEMBER, VIEWER)
+
 ## [0.5.3] - 2025-12-21
 
 ### Fixed

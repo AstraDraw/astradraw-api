@@ -9,10 +9,21 @@ import { StorageModule } from './storage/storage.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
+import { WorkspacesModule } from './workspaces/workspaces.module';
+import { TeamsModule } from './teams/teams.module';
+import { CollectionsModule } from './collections/collections.module';
 import { WorkspaceScenesController } from './workspace/workspace-scenes.controller';
 
 @Module({
-  imports: [StorageModule, PrismaModule, AuthModule, UsersModule],
+  imports: [
+    StorageModule,
+    PrismaModule,
+    AuthModule,
+    UsersModule,
+    WorkspacesModule,
+    TeamsModule,
+    CollectionsModule,
+  ],
   controllers: [
     ScenesController,
     RoomsController,

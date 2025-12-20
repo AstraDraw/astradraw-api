@@ -250,6 +250,9 @@ export class AuthService implements OnModuleInit {
 
     this.logger.log(`User authenticated: ${user.email}`);
 
+    // Ensure user has at least one workspace (for existing users without workspace)
+    await this.usersService.ensureUserHasWorkspace(user.id, user.email);
+
     // Generate JWT
     const payload: JwtPayload = {
       sub: user.id,
