@@ -15,6 +15,11 @@ export interface CreateLocalUserDto {
   name?: string;
 }
 
+export interface UpdateProfileDto {
+  name?: string;
+  avatarUrl?: string;
+}
+
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
@@ -120,5 +125,44 @@ export class UsersService {
       where: { id: userId },
       data: { passwordHash },
     });
+  }
+
+  /**
+   * Update user profile (name, avatar)
+   */
+  async updateProfile(userId: string, data: UpdateProfileDto): Promise<User> {
+    const updateData: Partial<User> = {};
+    
+    if (data.name !== undefined) {
+      updateData.name = data.name;
+    }
+    if (data.avatarUrl !== undefined) {
+      updateData.avatarUrl = data.avatarUrl;
+    }
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+    });
+
+    this.logger.log(`Updated profile for user: ${user.email}`);
+    return user;
+  }
+
+  /**
+   * Get user profile (safe version without password hash)
+   */
+  async getProfile(userId: string): Promise<Omit<User, 'passwordHash'> | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return null;
+    }
+
+    // Remove sensitive data
+    const { passwordHash, ...profile } = user;
+    return profile;
   }
 }

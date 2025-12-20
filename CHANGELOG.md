@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.2] - 2025-12-20
+
+### Added
+
+- **User Profile Management API**
+  - New `UsersController` with profile endpoints:
+    - `GET /api/v2/users/me` - Get current user's profile
+    - `PUT /api/v2/users/me` - Update profile (name, avatar)
+    - `POST /api/v2/users/me/avatar` - Upload avatar image
+    - `PUT /api/v2/users/me/avatar/delete` - Delete avatar
+  - Avatar stored as base64 data URL in database
+  - File validation (JPEG, PNG, GIF, WebP, max 2MB)
+  - Password hash excluded from profile responses
+
+- **UsersService Extensions**
+  - `updateProfile(userId, data)` - Update user name/avatar
+  - `getProfile(userId)` - Get profile without sensitive data
+
+### Security
+
+- All profile endpoints require JWT authentication
+- Password hash never exposed in API responses
+
 ## [0.5.1] - 2025-12-20
 
 ### Added
