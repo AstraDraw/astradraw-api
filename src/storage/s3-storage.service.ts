@@ -4,6 +4,7 @@ import {
   GetObjectCommand,
   PutObjectCommand,
   HeadObjectCommand,
+  DeleteObjectCommand,
   CreateBucketCommand,
   HeadBucketCommand,
 } from '@aws-sdk/client-s3';
@@ -181,6 +182,23 @@ export class S3StorageService implements IStorageService, OnModuleInit {
       return true;
     } catch (error: any) {
       this.logger.error(`Error putting object ${objectKey}:`, error);
+      throw error;
+    }
+  }
+
+  async delete(key: string, namespace: StorageNamespace): Promise<boolean> {
+    const objectKey = this.buildObjectKey(key, namespace);
+
+    try {
+      await this.s3Client.send(
+        new DeleteObjectCommand({
+          Bucket: this.bucket,
+          Key: objectKey,
+        }),
+      );
+      return true;
+    } catch (error: any) {
+      this.logger.error(`Error deleting object ${objectKey}:`, error);
       throw error;
     }
   }

@@ -72,4 +72,14 @@ export class KeyvStorageService implements IStorageService, OnModuleInit {
     await keyv.set(key, value);
     return true;
   }
+
+  async delete(key: string, namespace: StorageNamespace): Promise<boolean> {
+    const keyv = this.storagesMap.get(namespace);
+    if (!keyv) {
+      this.logger.error(`No storage found for namespace ${namespace}`);
+      return false;
+    }
+    await keyv.delete(key);
+    return true;
+  }
 }

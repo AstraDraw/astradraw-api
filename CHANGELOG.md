@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-12-20
+
+### Added
+
+- **Workspace Feature (MVP)**
+  - OIDC Authentication with Passport.js
+  - JWT-based session management with HTTP-only cookies
+  - PostgreSQL database integration via Prisma ORM
+  
+- **User Management**
+  - `UsersModule` and `UsersService` for user operations
+  - User creation/update from OIDC provider (Authentik)
+  
+- **Workspace Scenes API**
+  - `GET /api/v2/workspace/scenes` - List user's scenes
+  - `GET /api/v2/workspace/scenes/:id` - Get scene metadata
+  - `GET /api/v2/workspace/scenes/:id/data` - Get scene data
+  - `POST /api/v2/workspace/scenes` - Create new scene
+  - `PUT /api/v2/workspace/scenes/:id` - Update scene
+  - `PUT /api/v2/workspace/scenes/:id/data` - Update scene data only
+  - `DELETE /api/v2/workspace/scenes/:id` - Delete scene
+  - `POST /api/v2/workspace/scenes/:id/collaborate` - Start collaboration
+  
+- **Auth Endpoints**
+  - `GET /api/v2/auth/status` - Check OIDC configuration
+  - `GET /api/v2/auth/login` - Initiate OIDC login
+  - `GET /api/v2/auth/callback` - OIDC callback handler
+  - `GET /api/v2/auth/me` - Get current user
+  - `GET /api/v2/auth/logout` - Logout user
+
+- **Database Schema**
+  - `users` table with OIDC integration
+  - `scenes` table with S3 storage reference
+  - `collections` table for organizing scenes
+  
+- **New Dependencies**
+  - `@prisma/client` and `prisma` for database
+  - `@nestjs/passport`, `@nestjs/jwt` for authentication
+  - `passport-jwt` for JWT strategy
+  - `openid-client` for OIDC
+  - `cookie-parser` for cookie handling
+
+### Changed
+
+- Updated Dockerfile for Prisma client generation
+- Entrypoint now runs migrations before starting server
+
 ## [0.2.5] - 2025-12-20
 
 ### Added

@@ -40,6 +40,14 @@ export interface IStorageService {
    * @returns true if the key exists
    */
   has(key: string, namespace: StorageNamespace): Promise<boolean>;
+
+  /**
+   * Delete a value from storage
+   * @param key - The key to delete
+   * @param namespace - The storage namespace (scenes, rooms, files)
+   * @returns true if successfully deleted
+   */
+  delete(key: string, namespace: StorageNamespace): Promise<boolean>;
 }
 
 /**

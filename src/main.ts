@@ -1,5 +1,6 @@
 import { LogLevel } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { getSecret } from './utils/secrets';
 
@@ -13,9 +14,15 @@ async function bootstrap() {
   const logLevel = isLogLevel(logLevelValue) ? logLevelValue : 'log';
 
   const app = await NestFactory.create(AppModule, {
-    cors: true,
+    cors: {
+      origin: true,
+      credentials: true,
+    },
     logger: [logLevel],
   });
+
+  // Enable cookie parsing for JWT auth
+  app.use(cookieParser());
 
   app.setGlobalPrefix(getSecret('GLOBAL_PREFIX', '/api/v2'));
 

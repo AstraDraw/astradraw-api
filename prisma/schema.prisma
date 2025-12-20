@@ -1,0 +1,77 @@
+// Prisma Schema for AstraDraw Workspace
+// This schema manages user authentication and scene/workspace metadata
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - stores authenticated users from OIDC provider (Authentik)
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String?
+  avatarUrl   String?
+  oidcId      String   @unique // Authentik subject ID
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  scenes      Scene[]
+  collections Collection[]
+
+  @@map("users")
+}
+
+// Scene model - stores scene metadata (actual data in S3)
+model Scene {
+  id           String    @id @default(cuid())
+  title        String    @default("Untitled")
+  thumbnailUrl String?   // Base64 or URL to thumbnail
+  
+  // Link to actual scene data in S3
+  storageKey   String    @unique // S3 key for scene data
+  roomId       String?   // Collaboration room ID (if active)
+  
+  // Ownership
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Organization
+  collectionId String?
+  collection   Collection? @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+  
+  // Metadata
+  isPublic     Boolean   @default(false)
+  lastOpenedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([collectionId])
+  @@map("scenes")
+}
+
+// Collection model - folders for organizing scenes
+model Collection {
+  id        String   @id @default(cuid())
+  name      String
+  color     String?  // Optional color for the collection
+  
+  // Ownership
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Relations
+  scenes    Scene[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("collections")
+}

@@ -5,14 +5,24 @@ import { RoomsController } from './rooms/rooms.controller';
 import { FilesController } from './files/files.controller';
 import { TalktrackController } from './talktrack/talktrack.controller';
 import { StorageModule } from './storage/storage.module';
+import { PrismaModule } from './prisma/prisma.module';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+import { WorkspaceScenesController } from './workspace/workspace-scenes.controller';
 
 @Module({
-  imports: [StorageModule],
+  imports: [
+    StorageModule,
+    PrismaModule,
+    AuthModule,
+    UsersModule,
+  ],
   controllers: [
     ScenesController,
     RoomsController,
     FilesController,
     TalktrackController,
+    WorkspaceScenesController,
   ],
 })
 export class AppModule {
