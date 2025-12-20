@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5] - 2025-12-20
+
+### Added
+
+- **Video Status Endpoint**
+  - `GET /api/v2/talktrack/:videoId/status` - Check video processing status
+  - Returns processing state: `processing`, `ready`, or `error`
+  - Includes original Kinescope status for debugging
+
+### Fixed
+
+- Corrected status mapping: Kinescope uses `"done"` not `"ready"` for processed videos
+- Improved error handling for status checks
+
+### Changed
+
+- Enhanced logging for video status checks
+- Return both mapped status and original Kinescope status in response
+
 ## [0.2.4] - 2025-12-20
 
 ### Added
