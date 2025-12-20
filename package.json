@@ -1,6 +1,6 @@
 {
   "name": "astradraw-api",
-  "version": "0.5.0",
+  "version": "0.5.2",
   "description": "AstraDraw API - Backend service for authentication, workspace, and storage",
   "author": "",
   "private": true,
@@ -52,6 +52,7 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
+    "@types/multer": "^1.4.12",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.10.0",
     "@types/passport-jwt": "^4.0.1",

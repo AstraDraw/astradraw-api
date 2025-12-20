@@ -12,7 +12,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/jwt.guard';
 import { UsersService, UpdateProfileDto } from './users.service';
 
 @Controller('api/v2/users')
