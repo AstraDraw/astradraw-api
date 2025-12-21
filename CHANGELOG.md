@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.2] - 2025-12-21
+
+### Added
+
+- **Navigation Debug Endpoint**
+  - `POST /api/v2/debug/navigation` - Receives navigation logs from frontend
+  - Writes NDJSON logs to file specified by `DEBUG_NAVIGATION_LOG_PATH`
+  - Only active when `DEBUG_NAVIGATION=true` environment variable is set
+  - New `DebugModule` and `DebugController`
+
+### Technical
+
+- Added `src/debug/debug.controller.ts` and `src/debug/debug.module.ts`
+- Registered `DebugModule` in `AppModule`
+
 ## [0.7.1] - 2025-12-21
 
 ### Added

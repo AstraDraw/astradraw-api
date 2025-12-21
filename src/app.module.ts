@@ -14,6 +14,7 @@ import { TeamsModule } from './teams/teams.module';
 import { CollectionsModule } from './collections/collections.module';
 import { WorkspaceScenesController } from './workspace/workspace-scenes.controller';
 import { SceneAccessService } from './workspace/scene-access.service';
+import { DebugModule } from './debug/debug.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { SceneAccessService } from './workspace/scene-access.service';
     WorkspacesModule,
     TeamsModule,
     CollectionsModule,
+    DebugModule,
   ],
   controllers: [
     ScenesController,
