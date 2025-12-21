@@ -73,6 +73,7 @@ export class AuthController {
         email: user.email,
         name: user.name,
         avatarUrl: user.avatarUrl,
+        isSuperAdmin: user.isSuperAdmin,
       },
     });
   }
@@ -111,6 +112,7 @@ export class AuthController {
           email: user.email,
           name: user.name,
           avatarUrl: user.avatarUrl,
+          isSuperAdmin: user.isSuperAdmin,
         },
       });
     } catch (error) {
@@ -215,6 +217,7 @@ export class AuthController {
       email: user.email,
       name: user.name,
       avatarUrl: user.avatarUrl,
+      isSuperAdmin: user.isSuperAdmin,
     };
   }
 
