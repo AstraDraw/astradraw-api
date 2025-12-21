@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2025-12-21
+
+### Added
+
+- **Team-Collection Access Level Endpoints**
+  - `POST /workspaces/:id/collections/:id/teams` - Set team access to collection
+  - `GET /workspaces/:id/collections/:id/teams` - List teams with access
+  - `DELETE /workspaces/:id/collections/:id/teams/:teamId` - Remove team access
+
+- **Super Admin Field in Auth Responses**
+  - `isSuperAdmin` field now included in `/api/v2/auth/me` response
+  - `isSuperAdmin` field now included in `/api/v2/auth/register` response
+  - `isSuperAdmin` field now included in `/api/v2/auth/login/local` response
+  - Enables frontend to show super admin UI features
+
+### Changed
+
+- Added `type` field to all workspace API responses
+- Added `collaborationEnabled` field to scene API responses
+- Consolidated database migrations into single init migration
+
+### Technical
+
+- All 32 API tests pass
+
 ## [0.7.0] - 2025-12-21
 
 ### Added

@@ -415,7 +415,11 @@ export class CollectionsService {
     teamId: string,
     accessLevel: CollectionAccessLevel,
     userId: string,
-  ): Promise<{ success: boolean; teamId: string; accessLevel: CollectionAccessLevel }> {
+  ): Promise<{
+    success: boolean;
+    teamId: string;
+    accessLevel: CollectionAccessLevel;
+  }> {
     // Verify admin access
     await this.workspacesService.requireRole(
       workspaceId,
