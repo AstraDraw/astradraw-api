@@ -40,6 +40,7 @@ export interface WorkspaceWithRole {
   name: string;
   slug: string;
   avatarUrl: string | null;
+  type: 'PERSONAL' | 'SHARED';
   role: WorkspaceRole;
   memberCount: number;
   createdAt: Date;
@@ -109,6 +110,7 @@ export class WorkspacesService {
       name: m.workspace.name,
       slug: m.workspace.slug,
       avatarUrl: m.workspace.avatarUrl,
+      type: m.workspace.type,
       role: m.role,
       memberCount: m.workspace._count.members,
       createdAt: m.workspace.createdAt,
@@ -147,6 +149,7 @@ export class WorkspacesService {
       name: membership.workspace.name,
       slug: membership.workspace.slug,
       avatarUrl: membership.workspace.avatarUrl,
+      type: membership.workspace.type,
       role: membership.role,
       memberCount: membership.workspace._count.members,
       createdAt: membership.workspace.createdAt,
@@ -208,6 +211,7 @@ export class WorkspacesService {
       name: workspace.name,
       slug: workspace.slug,
       avatarUrl: workspace.avatarUrl,
+      type: workspace.type,
       role: WorkspaceRole.ADMIN,
       memberCount: workspace._count.members,
       createdAt: workspace.createdAt,
@@ -254,6 +258,7 @@ export class WorkspacesService {
       name: workspace.name,
       slug: workspace.slug,
       avatarUrl: workspace.avatarUrl,
+      type: workspace.type,
       role: WorkspaceRole.ADMIN,
       memberCount: workspace._count.members,
       createdAt: workspace.createdAt,

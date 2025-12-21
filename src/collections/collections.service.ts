@@ -3,9 +3,10 @@ import {
   Logger,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { WorkspaceRole } from '@prisma/client';
+import { WorkspaceRole, CollectionAccessLevel } from '@prisma/client';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { TeamsService } from '../teams/teams.service';
 
@@ -399,5 +400,157 @@ export class CollectionsService {
         'You do not have write access to this collection',
       );
     }
+  }
+
+  // ===========================================================================
+  // Team-Collection Access Management
+  // ===========================================================================
+
+  /**
+   * Set team access level for a collection
+   */
+  async setTeamAccess(
+    workspaceId: string,
+    collectionId: string,
+    teamId: string,
+    accessLevel: CollectionAccessLevel,
+    userId: string,
+  ): Promise<{ success: boolean; teamId: string; accessLevel: CollectionAccessLevel }> {
+    // Verify admin access
+    await this.workspacesService.requireRole(
+      workspaceId,
+      userId,
+      WorkspaceRole.ADMIN,
+    );
+
+    // Verify collection belongs to workspace
+    const collection = await this.prisma.collection.findUnique({
+      where: { id: collectionId },
+    });
+
+    if (!collection || collection.workspaceId !== workspaceId) {
+      throw new NotFoundException('Collection not found in this workspace');
+    }
+
+    // Verify team belongs to workspace
+    const team = await this.prisma.team.findUnique({
+      where: { id: teamId },
+    });
+
+    if (!team || team.workspaceId !== workspaceId) {
+      throw new NotFoundException('Team not found in this workspace');
+    }
+
+    // Cannot set team access on private collections
+    if (collection.isPrivate) {
+      throw new BadRequestException(
+        'Cannot set team access on private collections',
+      );
+    }
+
+    // Upsert the team-collection relationship
+    await this.prisma.teamCollection.upsert({
+      where: {
+        teamId_collectionId: { teamId, collectionId },
+      },
+      create: {
+        teamId,
+        collectionId,
+        accessLevel,
+      },
+      update: {
+        accessLevel,
+      },
+    });
+
+    this.logger.log(
+      `Set team ${teamId} access to collection ${collectionId} with level ${accessLevel}`,
+    );
+
+    return { success: true, teamId, accessLevel };
+  }
+
+  /**
+   * Remove team access from a collection
+   */
+  async removeTeamAccess(
+    workspaceId: string,
+    collectionId: string,
+    teamId: string,
+    userId: string,
+  ): Promise<void> {
+    // Verify admin access
+    await this.workspacesService.requireRole(
+      workspaceId,
+      userId,
+      WorkspaceRole.ADMIN,
+    );
+
+    // Verify collection belongs to workspace
+    const collection = await this.prisma.collection.findUnique({
+      where: { id: collectionId },
+    });
+
+    if (!collection || collection.workspaceId !== workspaceId) {
+      throw new NotFoundException('Collection not found in this workspace');
+    }
+
+    // Delete the team-collection relationship
+    await this.prisma.teamCollection.deleteMany({
+      where: { teamId, collectionId },
+    });
+
+    this.logger.log(
+      `Removed team ${teamId} access from collection ${collectionId}`,
+    );
+  }
+
+  /**
+   * List teams with access to a collection
+   */
+  async listCollectionTeams(
+    workspaceId: string,
+    collectionId: string,
+    userId: string,
+  ): Promise<
+    Array<{
+      teamId: string;
+      teamName: string;
+      teamColor: string;
+      accessLevel: CollectionAccessLevel;
+    }>
+  > {
+    // Verify workspace membership
+    await this.workspacesService.requireMembership(workspaceId, userId);
+
+    // Verify collection belongs to workspace
+    const collection = await this.prisma.collection.findUnique({
+      where: { id: collectionId },
+    });
+
+    if (!collection || collection.workspaceId !== workspaceId) {
+      throw new NotFoundException('Collection not found in this workspace');
+    }
+
+    // Get team-collection relationships
+    const teamCollections = await this.prisma.teamCollection.findMany({
+      where: { collectionId },
+      include: {
+        team: {
+          select: {
+            id: true,
+            name: true,
+            color: true,
+          },
+        },
+      },
+    });
+
+    return teamCollections.map((tc) => ({
+      teamId: tc.team.id,
+      teamName: tc.team.name,
+      teamColor: tc.team.color,
+      accessLevel: tc.accessLevel,
+    }));
   }
 }

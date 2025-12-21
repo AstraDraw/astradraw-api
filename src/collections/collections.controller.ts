@@ -11,9 +11,12 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
-import { User } from '@prisma/client';
+import { User, WorkspaceRole, CollectionAccessLevel } from '@prisma/client';
 import { CollectionsService } from './collections.service';
-import { WorkspaceRoleGuard } from '../workspaces/workspace-role.guard';
+import {
+  WorkspaceRoleGuard,
+  RequireRole,
+} from '../workspaces/workspace-role.guard';
 
 // DTOs
 interface CreateCollectionDto {
@@ -28,6 +31,11 @@ interface UpdateCollectionDto {
   icon?: string;
   color?: string;
   isPrivate?: boolean;
+}
+
+interface SetTeamAccessDto {
+  teamId: string;
+  accessLevel: CollectionAccessLevel;
 }
 
 @Controller()
@@ -89,5 +97,67 @@ export class CollectionsController {
   async deleteCollection(@Param('id') id: string, @CurrentUser() user: User) {
     await this.collectionsService.deleteCollection(id, user.id);
     return { success: true };
+  }
+
+  /**
+   * Set team access level for a collection (admin only)
+   * POST /workspaces/:workspaceId/collections/:collectionId/teams
+   */
+  @Post('workspaces/:workspaceId/collections/:collectionId/teams')
+  @UseGuards(WorkspaceRoleGuard)
+  @RequireRole(WorkspaceRole.ADMIN)
+  async setTeamAccess(
+    @Param('workspaceId') workspaceId: string,
+    @Param('collectionId') collectionId: string,
+    @Body() dto: SetTeamAccessDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.collectionsService.setTeamAccess(
+      workspaceId,
+      collectionId,
+      dto.teamId,
+      dto.accessLevel,
+      user.id,
+    );
+  }
+
+  /**
+   * Remove team access from a collection (admin only)
+   * DELETE /workspaces/:workspaceId/collections/:collectionId/teams/:teamId
+   */
+  @Delete('workspaces/:workspaceId/collections/:collectionId/teams/:teamId')
+  @UseGuards(WorkspaceRoleGuard)
+  @RequireRole(WorkspaceRole.ADMIN)
+  async removeTeamAccess(
+    @Param('workspaceId') workspaceId: string,
+    @Param('collectionId') collectionId: string,
+    @Param('teamId') teamId: string,
+    @CurrentUser() user: User,
+  ) {
+    await this.collectionsService.removeTeamAccess(
+      workspaceId,
+      collectionId,
+      teamId,
+      user.id,
+    );
+    return { success: true };
+  }
+
+  /**
+   * List teams with access to a collection
+   * GET /workspaces/:workspaceId/collections/:collectionId/teams
+   */
+  @Get('workspaces/:workspaceId/collections/:collectionId/teams')
+  @UseGuards(WorkspaceRoleGuard)
+  async listCollectionTeams(
+    @Param('workspaceId') workspaceId: string,
+    @Param('collectionId') collectionId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.collectionsService.listCollectionTeams(
+      workspaceId,
+      collectionId,
+      user.id,
+    );
   }
 }

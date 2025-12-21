@@ -68,6 +68,7 @@ interface SceneResponse {
   roomId: string | null;
   collectionId: string | null;
   isPublic: boolean;
+  collaborationEnabled: boolean;
   lastOpenedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -904,6 +905,7 @@ export class WorkspaceScenesController {
       roomId: scene.roomId,
       collectionId: scene.collectionId,
       isPublic: scene.isPublic,
+      collaborationEnabled: scene.collaborationEnabled ?? true,
       lastOpenedAt: scene.lastOpenedAt?.toISOString() || null,
       createdAt: scene.createdAt.toISOString(),
       updatedAt: scene.updatedAt.toISOString(),
