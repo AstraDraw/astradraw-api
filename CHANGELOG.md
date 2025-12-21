@@ -5,6 +5,113 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2025-12-21
+
+### Added
+
+- **Collaboration Permissions System**
+  - `SceneAccessService` for unified permission checking across workspace → collection → team → scene
+  - Returns `{ canView, canEdit, canCollaborate }` based on workspace type and user roles
+  - Personal workspaces: owner-only access, no collaboration
+  - Shared workspaces: role-based + team-based access control
+  
+- **Workspace Types**
+  - New `WorkspaceType` enum: `PERSONAL` (default) / `SHARED`
+  - Personal workspaces cannot have members, teams, or collaboration
+  - Shared workspaces support full team collaboration
+  - `WorkspacesService.requireSharedWorkspace()` guards team operations
+  
+- **Super Admin Role**
+  - New `isSuperAdmin` Boolean field on User model
+  - Bootstrap from `SUPERADMIN_EMAILS` environment variable (comma-separated)
+  - Super admins automatically flagged on login/registration
+  
+- **Collection Access Levels**
+  - New `CollectionAccessLevel` enum: `VIEW` / `EDIT`
+  - Replaces boolean `TeamCollection.canWrite`
+  - `TeamsService` returns `{ collectionId, canWrite }` based on access level
+  - More flexible for future access level expansion
+  
+- **Scene Collaboration Features**
+  - `Scene.collaborationEnabled` Boolean (default true)
+  - `Scene.roomKeyEncrypted` String for encrypted room credentials
+  - Room key encryption using AES-256-GCM with `ROOM_KEY_SECRET` or `JWT_SECRET`
+  - `POST /workspace/scenes/:id/collaborate` - Start collaboration with permission check
+  - `GET /workspace/scenes/:id/collaborate` - Get room credentials if authorized
+  - Collaboration disabled for personal workspace scenes
+  
+- **Scene Access Endpoints**
+  - `GET /workspace/by-slug/:workspaceSlug/scenes/:sceneId` - Load scene via workspace slug
+  - Returns scene data + access permissions in single request
+  - Enables direct scene URLs: `/workspace/{slug}/scene/{id}#key={roomKey}`
+  
+- **Collection Copy/Move Operations**
+  - `POST /workspace/collections/:id/copy-to-workspace` - Copy collection + scenes
+  - `POST /workspace/collections/:id/move-to-workspace` - Move collection + scenes
+  - Permission checks: source write access + target workspace admin
+  - Automatically clears team associations on move
+  - Disables collaboration when moving to personal workspace
+  - Duplicates storage keys for copied scenes
+
+### Changed
+
+- **Scene Permissions**
+  - All scene endpoints now use `SceneAccessService` for consistent permission checks
+  - `WorkspaceScenesController` methods updated:
+    - `listScenes()` - Filter by accessible collections
+    - `getScene()` - Check `canView` access
+    - `getSceneData()` - Check `canView` access  
+    - `updateScene()` - Check `canEdit` access
+    - `updateSceneData()` - Check `canEdit` access
+    - `deleteScene()` - Check `canEdit` access
+    - `duplicateScene()` - Check source `canView` + target `canEdit`
+    - `moveScene()` - Check `canEdit` access
+    
+- **Team Operations**
+  - `TeamsService.createTeam()` now requires shared workspace
+  - `TeamCollection` uses `accessLevel` instead of `canWrite`
+  - `getAccessibleCollectionIds()` returns `canWrite` based on `accessLevel === EDIT`
+  
+- **Workspace Service**
+  - Default workspace creation explicitly sets `type: PERSONAL`
+  - `inviteMember()` blocks personal workspaces
+  - New `createSharedWorkspace()` for creating shared workspaces
+
+### Database Migration
+
+**Migration:** `20251221_add_workspace_types_and_collab`
+
+```sql
+-- New enums
+CREATE TYPE "WorkspaceType" AS ENUM ('PERSONAL', 'SHARED');
+CREATE TYPE "CollectionAccessLevel" AS ENUM ('VIEW', 'EDIT');
+
+-- User changes
+ALTER TABLE "users" ADD COLUMN "isSuperAdmin" BOOLEAN NOT NULL DEFAULT false;
+
+-- Workspace changes  
+ALTER TABLE "workspaces" ADD COLUMN "type" "WorkspaceType" NOT NULL DEFAULT 'PERSONAL';
+
+-- TeamCollection changes
+ALTER TABLE "team_collections" DROP COLUMN "canWrite";
+ALTER TABLE "team_collections" ADD COLUMN "accessLevel" "CollectionAccessLevel" NOT NULL DEFAULT 'EDIT';
+
+-- Scene changes
+ALTER TABLE "scenes" ADD COLUMN "collaborationEnabled" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "scenes" ADD COLUMN "roomKeyEncrypted" TEXT;
+```
+
+### Environment Variables
+
+- `SUPERADMIN_EMAILS` - Comma-separated list of admin emails (optional)
+- `ROOM_KEY_SECRET` - Secret key for encrypting room keys (optional, defaults to JWT_SECRET)
+
+### Breaking Changes
+
+- `TeamCollection.canWrite` field removed, use `accessLevel` instead
+- Scene collaboration endpoints require authentication
+- Personal workspace scenes cannot be shared or collaborated on
+
 ## [0.6.1] - 2025-12-21
 
 ### Changed
