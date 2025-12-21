@@ -46,10 +46,14 @@ export class UsersService {
       slug = `${baseSlug}-${counter}`;
     }
 
+    // Extract username from email for personalized workspace name
+    const username = userEmail.split('@')[0];
+    const capitalizedUsername = username.charAt(0).toUpperCase() + username.slice(1);
+
     // Create workspace with user as admin
     await this.prisma.workspace.create({
       data: {
-        name: 'My Workspace',
+        name: `${capitalizedUsername}'s Workspace`,
         slug,
         members: {
           create: {
@@ -57,7 +61,7 @@ export class UsersService {
             role: WorkspaceRole.ADMIN,
           },
         },
-        // Also create a default private collection
+        // Also create a default private collection for personal scenes
         collections: {
           create: {
             name: 'Private',
