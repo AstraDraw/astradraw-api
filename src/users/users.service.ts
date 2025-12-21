@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { User, WorkspaceRole } from '@prisma/client';
+import { User, WorkspaceRole, WorkspaceType } from '@prisma/client';
 
 export interface UpsertUserDto {
   oidcId: string;
@@ -29,14 +29,18 @@ export class UsersService {
   /**
    * Create a default personal workspace for a new user
    */
-  private async createDefaultWorkspace(userId: string, userEmail: string): Promise<void> {
+  private async createDefaultWorkspace(
+    userId: string,
+    userEmail: string,
+  ): Promise<void> {
     // Generate a unique slug based on email
-    const baseSlug = userEmail
-      .split('@')[0]
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-      .slice(0, 30) || 'workspace';
+    const baseSlug =
+      userEmail
+        .split('@')[0]
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+        .slice(0, 30) || 'workspace';
 
     let slug = baseSlug;
     let counter = 0;
@@ -48,13 +52,15 @@ export class UsersService {
 
     // Extract username from email for personalized workspace name
     const username = userEmail.split('@')[0];
-    const capitalizedUsername = username.charAt(0).toUpperCase() + username.slice(1);
+    const capitalizedUsername =
+      username.charAt(0).toUpperCase() + username.slice(1);
 
     // Create workspace with user as admin
     await this.prisma.workspace.create({
       data: {
         name: `${capitalizedUsername}'s Workspace`,
         slug,
+        type: WorkspaceType.PERSONAL,
         members: {
           create: {
             userId,
@@ -67,13 +73,15 @@ export class UsersService {
             name: 'Private',
             icon: '🔒',
             isPrivate: true,
-            userId: userId,
+            userId,
           },
         },
       },
     });
 
-    this.logger.log(`Created default workspace "${slug}" for user ${userEmail}`);
+    this.logger.log(
+      `Created default workspace "${slug}" for user ${userEmail}`,
+    );
   }
 
   async findById(id: string): Promise<User | null> {
@@ -210,6 +218,30 @@ export class UsersService {
 
     this.logger.log(`Updated profile for user: ${user.email}`);
     return user;
+  }
+
+  /**
+   * Promote a user to super admin
+   */
+  async promoteToSuperAdmin(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { isSuperAdmin: true },
+    });
+  }
+
+  /**
+   * Promote by email if user exists
+   */
+  async promoteSuperAdminByEmail(email: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (user && !user.isSuperAdmin) {
+      await this.promoteToSuperAdmin(user.id);
+      this.logger.log(`Promoted super admin: ${email}`);
+    }
   }
 
   /**

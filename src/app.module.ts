@@ -13,6 +13,7 @@ import { WorkspacesModule } from './workspaces/workspaces.module';
 import { TeamsModule } from './teams/teams.module';
 import { CollectionsModule } from './collections/collections.module';
 import { WorkspaceScenesController } from './workspace/workspace-scenes.controller';
+import { SceneAccessService } from './workspace/scene-access.service';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { WorkspaceScenesController } from './workspace/workspace-scenes.controll
     SceneTalktrackController,
     WorkspaceScenesController,
   ],
+  providers: [SceneAccessService],
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {

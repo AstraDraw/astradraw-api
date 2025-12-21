@@ -42,7 +42,9 @@ export class WorkspaceRoleGuard implements CanActivate {
 
     // Get workspaceId from route params
     const workspaceId =
-      request.params.workspaceId || request.params.id || request.body?.workspaceId;
+      request.params.workspaceId ||
+      request.params.id ||
+      request.body?.workspaceId;
 
     if (!workspaceId) {
       return false;
@@ -77,4 +79,3 @@ export class WorkspaceRoleGuard implements CanActivate {
     }
   }
 }
-

@@ -2,11 +2,10 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-  ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { WorkspaceRole } from '@prisma/client';
+import { CollectionAccessLevel, WorkspaceRole } from '@prisma/client';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 
 export interface CreateTeamDto {
@@ -44,6 +43,7 @@ export interface TeamWithDetails {
     id: string;
     name: string;
     icon: string | null;
+    accessLevel: CollectionAccessLevel;
     canWrite: boolean;
   }[];
   createdAt: Date;
@@ -125,7 +125,8 @@ export class TeamsService {
         id: tc.collection.id,
         name: tc.collection.name,
         icon: tc.collection.icon,
-        canWrite: tc.canWrite,
+        accessLevel: tc.accessLevel,
+        canWrite: tc.accessLevel === CollectionAccessLevel.EDIT,
       })),
       createdAt: team.createdAt,
       updatedAt: team.updatedAt,
@@ -198,7 +199,8 @@ export class TeamsService {
         id: tc.collection.id,
         name: tc.collection.name,
         icon: tc.collection.icon,
-        canWrite: tc.canWrite,
+        accessLevel: tc.accessLevel,
+        canWrite: tc.accessLevel === CollectionAccessLevel.EDIT,
       })),
       createdAt: team.createdAt,
       updatedAt: team.updatedAt,
@@ -213,6 +215,7 @@ export class TeamsService {
     userId: string,
     dto: CreateTeamDto,
   ): Promise<TeamWithDetails> {
+    await this.workspacesService.requireSharedWorkspace(workspaceId);
     await this.workspacesService.requireRole(
       workspaceId,
       userId,
@@ -259,7 +262,7 @@ export class TeamsService {
           ? {
               create: dto.collectionIds.map((collectionId) => ({
                 collectionId,
-                canWrite: true,
+                accessLevel: CollectionAccessLevel.EDIT,
               })),
             }
           : undefined,
@@ -319,7 +322,8 @@ export class TeamsService {
         id: tc.collection.id,
         name: tc.collection.name,
         icon: tc.collection.icon,
-        canWrite: tc.canWrite,
+        accessLevel: tc.accessLevel,
+        canWrite: tc.accessLevel === CollectionAccessLevel.EDIT,
       })),
       createdAt: team.createdAt,
       updatedAt: team.updatedAt,
@@ -342,6 +346,7 @@ export class TeamsService {
       throw new NotFoundException('Team not found');
     }
 
+    await this.workspacesService.requireSharedWorkspace(team.workspaceId);
     await this.workspacesService.requireRole(
       team.workspaceId,
       userId,
@@ -398,7 +403,7 @@ export class TeamsService {
           data: dto.collectionIds.map((collectionId) => ({
             teamId,
             collectionId,
-            canWrite: true,
+            accessLevel: CollectionAccessLevel.EDIT,
           })),
         });
       }
@@ -466,7 +471,8 @@ export class TeamsService {
         id: tc.collection.id,
         name: tc.collection.name,
         icon: tc.collection.icon,
-        canWrite: tc.canWrite,
+        accessLevel: tc.accessLevel,
+        canWrite: tc.accessLevel === CollectionAccessLevel.EDIT,
       })),
       createdAt: updated.createdAt,
       updatedAt: updated.updatedAt,
@@ -485,6 +491,7 @@ export class TeamsService {
       throw new NotFoundException('Team not found');
     }
 
+    await this.workspacesService.requireSharedWorkspace(team.workspaceId);
     await this.workspacesService.requireRole(
       team.workspaceId,
       userId,
@@ -515,7 +522,13 @@ export class TeamsService {
   async getAccessibleCollectionIds(
     workspaceId: string,
     userId: string,
-  ): Promise<{ collectionId: string; canWrite: boolean }[]> {
+  ): Promise<
+    {
+      collectionId: string;
+      accessLevel: CollectionAccessLevel;
+      canWrite: boolean;
+    }[]
+  > {
     // Get user's membership
     const membership = await this.prisma.workspaceMember.findUnique({
       where: {
@@ -537,21 +550,25 @@ export class TeamsService {
     // Get all collections these teams have access to
     const teamCollections = await this.prisma.teamCollection.findMany({
       where: { teamId: { in: teamIds } },
-      select: { collectionId: true, canWrite: true },
+      select: { collectionId: true, accessLevel: true },
     });
 
     // Deduplicate and merge permissions (if user has access via multiple teams)
-    const collectionMap = new Map<string, boolean>();
+    const collectionMap = new Map<string, CollectionAccessLevel>();
     for (const tc of teamCollections) {
       const existing = collectionMap.get(tc.collectionId);
-      // canWrite is true if any team grants write access
-      collectionMap.set(tc.collectionId, existing || tc.canWrite);
+      if (existing === CollectionAccessLevel.EDIT) {
+        continue;
+      }
+      collectionMap.set(tc.collectionId, tc.accessLevel);
     }
 
-    return Array.from(collectionMap.entries()).map(([collectionId, canWrite]) => ({
-      collectionId,
-      canWrite,
-    }));
+    return Array.from(collectionMap.entries()).map(
+      ([collectionId, accessLevel]) => ({
+        collectionId,
+        accessLevel,
+        canWrite: accessLevel === CollectionAccessLevel.EDIT,
+      }),
+    );
   }
 }
-

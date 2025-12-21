@@ -12,4 +12,3 @@ import { TeamsModule } from '../teams/teams.module';
   exports: [CollectionsService],
 })
 export class CollectionsModule {}
-

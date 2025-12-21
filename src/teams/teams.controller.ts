@@ -13,7 +13,10 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { User, WorkspaceRole } from '@prisma/client';
 import { TeamsService } from './teams.service';
-import { WorkspaceRoleGuard, RequireRole } from '../workspaces/workspace-role.guard';
+import {
+  WorkspaceRoleGuard,
+  RequireRole,
+} from '../workspaces/workspace-role.guard';
 
 // DTOs
 interface CreateTeamDto {
@@ -92,4 +95,3 @@ export class TeamsController {
     return { success: true };
   }
 }
-

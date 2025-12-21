@@ -11,4 +11,3 @@ import { WorkspacesModule } from '../workspaces/workspaces.module';
   exports: [TeamsService],
 })
 export class TeamsModule {}
-

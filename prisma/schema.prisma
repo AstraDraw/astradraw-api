@@ -20,6 +20,16 @@ enum WorkspaceRole {
   VIEWER
 }
 
+enum WorkspaceType {
+  PERSONAL
+  SHARED
+}
+
+enum CollectionAccessLevel {
+  VIEW
+  EDIT
+}
+
 // =============================================================================
 // User Model
 // =============================================================================
@@ -34,6 +44,7 @@ model User {
   // Authentication - either OIDC or local password
   oidcId       String?  @unique  // OIDC subject ID (optional for local users)
   passwordHash String?           // bcrypt hash for local auth (optional for OIDC users)
+  isSuperAdmin Boolean  @default(false)
   
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -56,6 +67,7 @@ model Workspace {
   name        String
   slug        String   @unique
   avatarUrl   String?
+  type        WorkspaceType @default(PERSONAL)
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -160,7 +172,7 @@ model TeamCollection {
   collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
   
   // Permission level
-  canWrite     Boolean    @default(true)
+  accessLevel  CollectionAccessLevel @default(EDIT)
   
   createdAt    DateTime   @default(now())
 
@@ -210,6 +222,8 @@ model Scene {
   // Link to actual scene data in S3
   storageKey   String    @unique // S3 key for scene data
   roomId       String?   // Collaboration room ID (if active)
+  roomKeyEncrypted String?
+  collaborationEnabled Boolean @default(true)
   
   // Ownership
   userId       String

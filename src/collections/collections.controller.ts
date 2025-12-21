@@ -91,4 +91,3 @@ export class CollectionsController {
     return { success: true };
   }
 }
-

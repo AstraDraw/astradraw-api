@@ -242,4 +242,3 @@ export class WorkspacesController {
     return this.workspacesService.joinViaInviteLink(dto.code, user.id);
   }
 }
-

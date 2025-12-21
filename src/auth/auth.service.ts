@@ -51,6 +51,8 @@ export class AuthService implements OnModuleInit {
     if (this.isLocalAuthEnabled()) {
       await this.ensureDefaultAdminExists();
     }
+
+    await this.ensureSuperAdmins();
   }
 
   /**
@@ -79,6 +81,25 @@ export class AuthService implements OnModuleInit {
         passwordHash,
       );
       this.logger.log(`Admin user migrated to bcrypt: ${adminEmail}`);
+    }
+  }
+
+  /**
+   * Promote configured users to super admin role
+   */
+  private async ensureSuperAdmins() {
+    const superAdminEnv = process.env.SUPERADMIN_EMAILS;
+    if (!superAdminEnv) {
+      return;
+    }
+
+    const emails = superAdminEnv
+      .split(',')
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean);
+
+    for (const email of emails) {
+      await this.usersService.promoteSuperAdminByEmail(email);
     }
   }
 

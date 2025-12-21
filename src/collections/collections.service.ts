@@ -107,9 +107,7 @@ export class CollectionsService {
       // 2. Owner can write to their own collections
       // 3. Team access with canWrite=true
       const canWrite =
-        isAdmin ||
-        isOwner ||
-        (teamWriteAccess.get(collection.id) ?? false);
+        isAdmin || isOwner || (teamWriteAccess.get(collection.id) ?? false);
 
       accessibleCollections.push({
         id: collection.id,
@@ -294,7 +292,9 @@ export class CollectionsService {
 
     // Only admin or owner can update
     if (!isAdmin && !isOwner) {
-      throw new ForbiddenException('Only the owner or admin can update this collection');
+      throw new ForbiddenException(
+        'Only the owner or admin can update this collection',
+      );
     }
 
     const updated = await this.prisma.collection.update({
@@ -356,7 +356,9 @@ export class CollectionsService {
 
     // Only admin or owner can delete
     if (!isAdmin && !isOwner) {
-      throw new ForbiddenException('Only the owner or admin can delete this collection');
+      throw new ForbiddenException(
+        'Only the owner or admin can delete this collection',
+      );
     }
 
     await this.prisma.collection.delete({
@@ -384,14 +386,18 @@ export class CollectionsService {
   /**
    * Check if user can write to a collection (for scene operations)
    */
-  async requireWriteAccess(collectionId: string, userId: string): Promise<void> {
+  async requireWriteAccess(
+    collectionId: string,
+    userId: string,
+  ): Promise<void> {
     const access = await this.canAccessCollection(collectionId, userId);
     if (!access.canRead) {
       throw new ForbiddenException('You do not have access to this collection');
     }
     if (!access.canWrite) {
-      throw new ForbiddenException('You do not have write access to this collection');
+      throw new ForbiddenException(
+        'You do not have write access to this collection',
+      );
     }
   }
 }
-

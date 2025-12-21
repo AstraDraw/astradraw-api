@@ -7,7 +7,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { WorkspaceRole, Prisma } from '@prisma/client';
+import { WorkspaceRole, WorkspaceType } from '@prisma/client';
 import { customAlphabet } from 'nanoid';
 
 const nanoid = customAlphabet('0123456789abcdefghijklmnopqrstuvwxyz', 10);
@@ -161,6 +161,16 @@ export class WorkspacesService {
     userId: string,
     dto: CreateWorkspaceDto,
   ): Promise<WorkspaceWithRole> {
+    return this.createSharedWorkspace(userId, dto);
+  }
+
+  /**
+   * Create a shared workspace (user becomes admin)
+   */
+  async createSharedWorkspace(
+    userId: string,
+    dto: CreateWorkspaceDto,
+  ): Promise<WorkspaceWithRole> {
     const slug = dto.slug || (await this.generateSlug(dto.name));
 
     // Check if slug is taken
@@ -176,6 +186,7 @@ export class WorkspacesService {
         name: dto.name,
         slug,
         avatarUrl: dto.avatarUrl,
+        type: WorkspaceType.SHARED,
         members: {
           create: {
             userId,
@@ -309,6 +320,7 @@ export class WorkspacesService {
     adminUserId: string,
     dto: InviteMemberDto,
   ): Promise<MemberWithUser> {
+    await this.requireSharedWorkspace(workspaceId);
     await this.requireRole(workspaceId, adminUserId, WorkspaceRole.ADMIN);
 
     // Find the user by email
@@ -385,7 +397,10 @@ export class WorkspacesService {
     }
 
     // Prevent demoting the last admin
-    if (member.role === WorkspaceRole.ADMIN && newRole !== WorkspaceRole.ADMIN) {
+    if (
+      member.role === WorkspaceRole.ADMIN &&
+      newRole !== WorkspaceRole.ADMIN
+    ) {
       const adminCount = await this.prisma.workspaceMember.count({
         where: { workspaceId, role: WorkspaceRole.ADMIN },
       });
@@ -489,6 +504,7 @@ export class WorkspacesService {
     userId: string,
     dto: CreateInviteLinkDto,
   ) {
+    await this.requireSharedWorkspace(workspaceId);
     await this.requireRole(workspaceId, userId, WorkspaceRole.ADMIN);
 
     const inviteLink = await this.prisma.inviteLink.create({
@@ -564,6 +580,13 @@ export class WorkspacesService {
     if (link.maxUses && link.uses >= link.maxUses) {
       throw new BadRequestException(
         'This invite link has reached its maximum uses',
+      );
+    }
+
+    // Prevent joining personal workspaces via links
+    if (link.workspace.type === WorkspaceType.PERSONAL) {
+      throw new ForbiddenException(
+        'Cannot join a personal workspace via invite link',
       );
     }
 
@@ -659,5 +682,26 @@ export class WorkspacesService {
     const membership = await this.getMembership(workspaceId, userId);
     return membership?.role === WorkspaceRole.ADMIN;
   }
-}
 
+  /**
+   * Ensure the workspace exists and is not personal (used for invites/teams)
+   */
+  async requireSharedWorkspace(workspaceId: string) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { id: true, type: true },
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    if (workspace.type === WorkspaceType.PERSONAL) {
+      throw new ForbiddenException(
+        'This action is not available for personal workspaces',
+      );
+    }
+
+    return workspace;
+  }
+}
