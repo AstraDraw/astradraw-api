@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.3] - 2025-12-22
+
+### Added
+
+- **Auto-Collaboration for Shared Collections** 🎉
+  - Scenes in non-private collections of SHARED workspaces automatically get collaboration enabled
+  - `createScene()` auto-generates `roomId` and `roomKey` for eligible scenes
+  - `getSceneBySlug()` returns `roomKey` for users with `canCollaborate` access
+  - Lazy credential generation for existing scenes without `roomId`
+
+- **Proper AES-128-GCM Key Generation**
+  - Room keys are now 22-character base64url strings (16 bytes encoded)
+  - Compatible with Excalidraw's frontend encryption requirements
+  - `generateRoomKey()` helper method using `crypto.randomBytes(16)`
+
+### Changed
+
+- Scene response now includes `roomId` and `roomKey` fields when user has collaborate access
+- `collaborationEnabled` flag is auto-set based on collection/workspace type
+
+### Technical
+
+- Added `generateRoomKey()` private method to `WorkspaceScenesController`
+- Updated `createScene()` to check workspace type and collection privacy
+- Updated `getSceneBySlug()` to decrypt and return room key for authorized users
+
 ## [0.7.2] - 2025-12-21
 
 ### Added

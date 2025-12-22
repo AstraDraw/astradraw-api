@@ -79,6 +79,9 @@ interface SceneWithAccessResponse {
   scene: SceneResponse;
   data?: string | null;
   access: SceneAccessResult;
+  // Room credentials for auto-collaboration (only if canCollaborate)
+  roomId?: string | null;
+  roomKey?: string | null;
 }
 
 @Controller('workspace')
@@ -131,6 +134,22 @@ export class WorkspaceScenesController {
       decipher.final(),
     ]);
     return decrypted.toString('utf8');
+  }
+
+  /**
+   * Generate a room key compatible with Excalidraw's encryption.
+   * Excalidraw uses AES-128-GCM, which requires a 128-bit (16 byte) key.
+   * The key is encoded as base64url (without padding) = 22 characters.
+   */
+  private generateRoomKey(): string {
+    // Generate 16 random bytes (128 bits for AES-128-GCM)
+    const keyBytes = randomBytes(16);
+    // Encode as base64url (Excalidraw expects JWK "k" format which is base64url)
+    return keyBytes
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
   }
 
   /**
@@ -263,6 +282,7 @@ export class WorkspaceScenesController {
 
   /**
    * Load scene by workspace slug (direct URL access)
+   * Returns room credentials for auto-collaboration if user has canCollaborate access
    */
   @Get('by-slug/:workspaceSlug/scenes/:sceneId')
   async getSceneBySlug(
@@ -306,10 +326,49 @@ export class WorkspaceScenesController {
       this.namespace,
     );
 
+    // Handle room credentials for auto-collaboration
+    let roomId = scene.roomId;
+    let roomKey: string | null = null;
+
+    if (access.canCollaborate) {
+      // If scene doesn't have room credentials yet, generate them lazily
+      // This handles existing scenes created before auto-collaboration was implemented
+      if (!roomId || !scene.roomKeyEncrypted) {
+        const nanoid20 = customAlphabet(
+          '0123456789abcdefghijklmnopqrstuvwxyz',
+          20,
+        );
+
+        roomId = roomId || nanoid20();
+        // Generate a proper AES-128-GCM key (16 bytes = 128 bits)
+        roomKey = this.generateRoomKey();
+        const roomKeyEncrypted = this.encryptRoomKey(roomKey);
+
+        // Update scene with new room credentials
+        await this.prisma.scene.update({
+          where: { id: sceneId },
+          data: {
+            roomId,
+            roomKeyEncrypted,
+            collaborationEnabled: true,
+          },
+        });
+
+        this.logger.log(
+          `Lazily generated room credentials for existing scene ${sceneId}`,
+        );
+      } else {
+        // Decrypt existing room key
+        roomKey = this.decryptRoomKey(scene.roomKeyEncrypted);
+      }
+    }
+
     return {
       scene: this.toSceneResponse(scene, access.canEdit),
       data: dataBuffer ? dataBuffer.toString('base64') : null,
       access,
+      roomId,
+      roomKey,
     };
   }
 
@@ -379,6 +438,42 @@ export class WorkspaceScenesController {
       await this.storageService.set(storageKey, dataBuffer, this.namespace);
     }
 
+    // Determine if auto-collaboration should be enabled
+    // Scenes in non-private collections of SHARED workspaces get auto-collaboration
+    let roomId: string | null = null;
+    let roomKeyEncrypted: string | null = null;
+    let collaborationEnabled = false;
+
+    if (dto.collectionId) {
+      const collection = await this.prisma.collection.findUnique({
+        where: { id: dto.collectionId },
+        include: { workspace: true },
+      });
+
+      if (
+        collection &&
+        collection.workspace.type === WorkspaceType.SHARED &&
+        !collection.isPrivate
+      ) {
+        // Auto-generate room credentials for shared collection scenes
+        const nanoid20 = customAlphabet(
+          '0123456789abcdefghijklmnopqrstuvwxyz',
+          20,
+        );
+
+        roomId = nanoid20();
+        // Generate a proper AES-128-GCM key (16 bytes = 128 bits)
+        // Encoded as base64url (22 characters) for Excalidraw encryption
+        const roomKey = this.generateRoomKey();
+        roomKeyEncrypted = this.encryptRoomKey(roomKey);
+        collaborationEnabled = true;
+
+        this.logger.log(
+          `Auto-enabling collaboration for scene in shared collection ${collection.id}`,
+        );
+      }
+    }
+
     // Create scene record
     const scene = await this.prisma.scene.create({
       data: {
@@ -387,6 +482,9 @@ export class WorkspaceScenesController {
         storageKey,
         userId: user.id,
         collectionId: dto.collectionId,
+        roomId,
+        roomKeyEncrypted,
+        collaborationEnabled,
       },
     });
 
@@ -841,13 +939,10 @@ export class WorkspaceScenesController {
         '0123456789abcdefghijklmnopqrstuvwxyz',
         20,
       );
-      const nanoid40 = customAlphabet(
-        '0123456789abcdefghijklmnopqrstuvwxyz',
-        40,
-      );
 
       roomId = roomId || nanoid20();
-      roomKey = nanoid40();
+      // Generate a proper AES-128-GCM key (16 bytes = 128 bits)
+      roomKey = this.generateRoomKey();
 
       const encrypted = this.encryptRoomKey(roomKey);
 
