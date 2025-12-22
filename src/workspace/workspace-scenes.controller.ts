@@ -586,6 +586,109 @@ export class WorkspaceScenesController {
   }
 
   /**
+   * Upload scene thumbnail (PNG image)
+   * Called after successful scene save to update the preview image
+   */
+  @Put('scenes/:id/thumbnail')
+  async uploadThumbnail(
+    @Param('id') id: string,
+    @Body() data: Buffer,
+    @CurrentUser() user: User,
+  ): Promise<{ thumbnailUrl: string }> {
+    const scene = await this.prisma.scene.findUnique({
+      where: { id },
+    });
+
+    if (!scene) {
+      throw new NotFoundException('Scene not found');
+    }
+
+    const access = await this.sceneAccessService.checkAccess(id, user.id);
+    if (!access.canEdit) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    // Validate size (max 500KB for thumbnails)
+    const maxSize = 500 * 1024;
+    if (data.length > maxSize) {
+      throw new BadRequestException(
+        `Thumbnail too large. Maximum size is ${maxSize / 1024}KB`,
+      );
+    }
+
+    // Store thumbnail in MinIO with idempotent key
+    const thumbnailKey = `${id}.png`;
+    await this.storageService.set(
+      thumbnailKey,
+      data,
+      StorageNamespace.THUMBNAILS,
+    );
+
+    // Build the public URL for the thumbnail
+    // Note: S3_PUBLIC_URL and S3_BUCKET must be aligned - the public endpoint
+    // should serve the same bucket that S3_BUCKET points to.
+    const bucket = (process.env.S3_BUCKET || 'excalidraw').replace(/^\//, ''); // Remove leading slash if any
+
+    // S3_PUBLIC_URL: For production with dedicated S3 domain (e.g., https://s3.example.com)
+    // If not set, use /s3/ path which is proxied to MinIO via Traefik
+    const s3PublicUrl = process.env.S3_PUBLIC_URL?.replace(/\/+$/, ''); // Remove trailing slashes
+    const thumbnailUrl = s3PublicUrl
+      ? `${s3PublicUrl}/${bucket}/thumbnails/${thumbnailKey}` // Production: https://s3.example.com/bucket/thumbnails/id.png
+      : `/s3/${bucket}/thumbnails/${thumbnailKey}`; // Development: /s3/bucket/thumbnails/id.png (via Traefik)
+
+    // Update scene record with thumbnail URL
+    await this.prisma.scene.update({
+      where: { id },
+      data: { thumbnailUrl },
+    });
+
+    this.logger.log(`Updated thumbnail for scene ${id}`);
+    return { thumbnailUrl };
+  }
+
+  /**
+   * Get scene thumbnail (public endpoint for displaying thumbnails)
+   */
+  @Get('scenes/:id/thumbnail')
+  @Header('content-type', 'image/png')
+  @Header('cache-control', 'public, max-age=3600') // Cache for 1 hour
+  async getThumbnail(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @Res() res: Response,
+  ): Promise<void> {
+    const scene = await this.prisma.scene.findUnique({
+      where: { id },
+    });
+
+    if (!scene) {
+      throw new NotFoundException('Scene not found');
+    }
+
+    // Check view access
+    const access = await this.sceneAccessService.checkAccess(id, user.id);
+    if (!access.canView) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    // Get thumbnail from storage
+    const thumbnailKey = `${id}.png`;
+    const data = await this.storageService.get(
+      thumbnailKey,
+      StorageNamespace.THUMBNAILS,
+    );
+
+    if (!data) {
+      throw new NotFoundException('Thumbnail not found');
+    }
+
+    const stream = new Readable();
+    stream.push(data);
+    stream.push(null);
+    stream.pipe(res);
+  }
+
+  /**
    * Delete a scene
    */
   @Delete('scenes/:id')

@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.4] - 2025-12-22
+
+### Added
+
+- **Scene Thumbnail Upload Endpoint** 🖼️
+  - `PUT /api/v2/workspace/scenes/:id/thumbnail` - Upload PNG thumbnail
+  - Stores thumbnails in MinIO at `thumbnails/{sceneId}.png`
+  - Updates `Scene.thumbnailUrl` in database
+  - 500KB size limit enforced
+
+- **Traefik Proxy for MinIO** (docker-compose)
+  - MinIO S3 API now accessible via `/s3/` path through Traefik
+  - Enables browser access to thumbnails without exposing internal hostnames
+
+### Changed
+
+- **Thumbnail URL generation** - Supports both dev (Traefik proxy) and production (S3_PUBLIC_URL)
+  - Dev: `/s3/{bucket}/thumbnails/{id}.png`
+  - Prod: `{S3_PUBLIC_URL}/{bucket}/thumbnails/{id}.png`
+
+### Technical
+
+- Added `StorageNamespace.THUMBNAILS` to storage interface
+- URL sanitization: strips trailing slashes from S3_PUBLIC_URL, leading slashes from bucket
+
 ## [0.7.3] - 2025-12-22
 
 ### Added

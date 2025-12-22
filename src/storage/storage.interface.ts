@@ -5,6 +5,7 @@ export enum StorageNamespace {
   SCENES = 'scenes',
   ROOMS = 'rooms',
   FILES = 'files',
+  THUMBNAILS = 'thumbnails',
 }
 
 /**
