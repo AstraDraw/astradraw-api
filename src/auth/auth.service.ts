@@ -10,6 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import * as openidClient from 'openid-client';
 import { UsersService } from '../users/users.service';
+import { getSecret } from '../utils/secrets';
 
 export interface OidcUserInfo {
   sub: string;
@@ -59,8 +60,8 @@ export class AuthService implements OnModuleInit {
    * Ensure default admin user exists in database
    */
   private async ensureDefaultAdminExists() {
-    const adminEmail = process.env.ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL;
-    const adminPassword = process.env.ADMIN_PASSWORD || 'admin';
+    const adminEmail = getSecret('ADMIN_EMAIL', DEFAULT_ADMIN_EMAIL);
+    const adminPassword = getSecret('ADMIN_PASSWORD', 'admin');
 
     const existingAdmin = await this.usersService.findByEmail(adminEmail);
 
@@ -88,7 +89,7 @@ export class AuthService implements OnModuleInit {
    * Promote configured users to super admin role
    */
   private async ensureSuperAdmins() {
-    const superAdminEnv = process.env.SUPERADMIN_EMAILS;
+    const superAdminEnv = getSecret('SUPERADMIN_EMAILS');
     if (!superAdminEnv) {
       return;
     }
@@ -108,11 +109,11 @@ export class AuthService implements OnModuleInit {
       return this.oidcConfig;
     }
 
-    const issuerUrl = process.env.OIDC_ISSUER_URL;
-    const clientId = process.env.OIDC_CLIENT_ID;
-    const clientSecret = process.env.OIDC_CLIENT_SECRET;
+    const issuerUrl = getSecret('OIDC_ISSUER_URL');
+    const clientId = getSecret('OIDC_CLIENT_ID');
+    const clientSecret = getSecret('OIDC_CLIENT_SECRET');
     // Use internal URL for discovery if provided (e.g., http://dex:5556/dex for Docker)
-    const internalUrl = process.env.OIDC_INTERNAL_URL || issuerUrl;
+    const internalUrl = getSecret('OIDC_INTERNAL_URL') || issuerUrl;
 
     if (!issuerUrl || !clientId || !clientSecret) {
       throw new Error('OIDC configuration missing');
@@ -139,9 +140,9 @@ export class AuthService implements OnModuleInit {
 
   isOidcConfigured(): boolean {
     return !!(
-      process.env.OIDC_ISSUER_URL &&
-      process.env.OIDC_CLIENT_ID &&
-      process.env.OIDC_CLIENT_SECRET
+      getSecret('OIDC_ISSUER_URL') &&
+      getSecret('OIDC_CLIENT_ID') &&
+      getSecret('OIDC_CLIENT_SECRET')
     );
   }
 
@@ -150,8 +151,9 @@ export class AuthService implements OnModuleInit {
    */
   isLocalAuthEnabled(): boolean {
     // Local auth is enabled if OIDC is not configured, or explicitly enabled
-    const explicitlyEnabled = process.env.ENABLE_LOCAL_AUTH === 'true';
-    const explicitlyDisabled = process.env.ENABLE_LOCAL_AUTH === 'false';
+    const enableLocalAuth = getSecret('ENABLE_LOCAL_AUTH');
+    const explicitlyEnabled = enableLocalAuth === 'true';
+    const explicitlyDisabled = enableLocalAuth === 'false';
 
     if (explicitlyDisabled) {
       return false;
@@ -165,7 +167,7 @@ export class AuthService implements OnModuleInit {
    */
   isRegistrationEnabled(): boolean {
     // Registration is disabled by default, must be explicitly enabled
-    return process.env.ENABLE_REGISTRATION === 'true';
+    return getSecret('ENABLE_REGISTRATION') === 'true';
   }
 
   /**
@@ -237,8 +239,8 @@ export class AuthService implements OnModuleInit {
     }
 
     // Support both email and username for admin
-    const adminUsername = process.env.ADMIN_USERNAME || DEFAULT_ADMIN_USERNAME;
-    const adminEmail = process.env.ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL;
+    const adminUsername = getSecret('ADMIN_USERNAME', DEFAULT_ADMIN_USERNAME);
+    const adminEmail = getSecret('ADMIN_EMAIL', DEFAULT_ADMIN_EMAIL);
 
     // Determine email to look up
     let email = emailOrUsername;
@@ -288,7 +290,10 @@ export class AuthService implements OnModuleInit {
 
   async getAuthorizationUrl(state: string): Promise<string> {
     const config = await this.getOidcConfig();
-    const callbackUrl = process.env.OIDC_CALLBACK_URL;
+    // Build callback URL from APP_URL if not explicitly set
+    const callbackUrl =
+      getSecret('OIDC_CALLBACK_URL') ||
+      `${getSecret('APP_URL', 'http://localhost')}/api/v2/auth/callback`;
 
     if (!callbackUrl) {
       throw new Error('OIDC_CALLBACK_URL not configured');
@@ -318,7 +323,10 @@ export class AuthService implements OnModuleInit {
     state: string,
   ): Promise<{ accessToken: string; user: any }> {
     const config = await this.getOidcConfig();
-    const callbackUrl = process.env.OIDC_CALLBACK_URL;
+    // Build callback URL from APP_URL if not explicitly set
+    const callbackUrl =
+      getSecret('OIDC_CALLBACK_URL') ||
+      `${getSecret('APP_URL', 'http://localhost')}/api/v2/auth/callback`;
 
     if (!callbackUrl) {
       throw new Error('OIDC_CALLBACK_URL not configured');

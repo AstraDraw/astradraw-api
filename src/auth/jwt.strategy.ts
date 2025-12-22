@@ -3,6 +3,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, ExtractJwt } from 'passport-jwt';
 import { Request } from 'express';
 import { AuthService, JwtPayload } from './auth.service';
+import { getSecret } from '../utils/secrets';
 
 // Custom extractor that tries cookie first, then Authorization header
 const cookieOrHeaderExtractor = (req: Request): string | null => {
@@ -21,7 +22,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: cookieOrHeaderExtractor,
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET || 'change-me-in-production',
+      secretOrKey: getSecret('JWT_SECRET', 'change-me-in-production'),
     });
   }
 

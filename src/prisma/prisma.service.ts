@@ -5,6 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
+import { getDatabaseUrl } from './database-url';
 
 @Injectable()
 export class PrismaService
@@ -12,6 +13,16 @@ export class PrismaService
   implements OnModuleInit, OnModuleDestroy
 {
   private readonly logger = new Logger(PrismaService.name);
+
+  constructor() {
+    super({
+      datasources: {
+        db: {
+          url: getDatabaseUrl(),
+        },
+      },
+    });
+  }
 
   async onModuleInit() {
     try {

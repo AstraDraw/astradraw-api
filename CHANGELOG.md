@@ -5,101 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.7.4] - 2025-12-22
+## [0.7.5] - 2025-12-22
 
 ### Added
 
-- **Scene Thumbnail Upload Endpoint** 🖼️
-  - `PUT /api/v2/workspace/scenes/:id/thumbnail` - Upload PNG thumbnail
-  - Stores thumbnails in MinIO at `thumbnails/{sceneId}.png`
-  - Updates `Scene.thumbnailUrl` in database
-  - 500KB size limit enforced
+- **Complete Docker Secrets Support**
+  - All sensitive configuration now supports `_FILE` suffix for Docker secrets
+  - New `database-url.ts` utility builds DATABASE_URL from individual secrets
+  - Supports external PostgreSQL via `POSTGRES_HOST` and `POSTGRES_PORT`
+  - Updated `auth.module.ts`, `auth.service.ts`, `jwt.strategy.ts` to use `getSecret()`
+  - Updated `workspace-scenes.controller.ts` to use `getSecret()` for S3 config
 
-- **Traefik Proxy for MinIO** (docker-compose)
-  - MinIO S3 API now accessible via `/s3/` path through Traefik
-  - Enables browser access to thumbnails without exposing internal hostnames
+- **Supported Secrets**
+  - `POSTGRES_USER_FILE`, `POSTGRES_PASSWORD_FILE`, `POSTGRES_DB_FILE`
+  - `DATABASE_URL_FILE` (alternative to individual credentials)
+  - `JWT_SECRET_FILE`, `ROOM_KEY_SECRET_FILE`
+  - `OIDC_ISSUER_URL_FILE`, `OIDC_CLIENT_ID_FILE`, `OIDC_CLIENT_SECRET_FILE`
+  - `OIDC_CALLBACK_URL_FILE`, `OIDC_INTERNAL_URL_FILE`
+  - `ADMIN_USERNAME_FILE`, `ADMIN_PASSWORD_FILE`, `ADMIN_EMAIL_FILE`
+  - `SUPERADMIN_EMAILS_FILE`
 
 ### Changed
 
-- **Thumbnail URL generation** - Supports both dev (Traefik proxy) and production (S3_PUBLIC_URL)
-  - Dev: `/s3/{bucket}/thumbnails/{id}.png`
-  - Prod: `{S3_PUBLIC_URL}/{bucket}/thumbnails/{id}.png`
-
-### Technical
-
-- Added `StorageNamespace.THUMBNAILS` to storage interface
-- URL sanitization: strips trailing slashes from S3_PUBLIC_URL, leading slashes from bucket
-
-### Documentation
-
-- Added MinIO bucket policy setup instructions for public thumbnail access
-- Thumbnails folder requires `mc anonymous set download` for browser access
-
-## [0.7.3] - 2025-12-22
-
-### Added
-
-- **Auto-Collaboration for Shared Collections** 🎉
-  - Scenes in non-private collections of SHARED workspaces automatically get collaboration enabled
-  - `createScene()` auto-generates `roomId` and `roomKey` for eligible scenes
-  - `getSceneBySlug()` returns `roomKey` for users with `canCollaborate` access
-  - Lazy credential generation for existing scenes without `roomId`
-
-- **Proper AES-128-GCM Key Generation**
-  - Room keys are now 22-character base64url strings (16 bytes encoded)
-  - Compatible with Excalidraw's frontend encryption requirements
-  - `generateRoomKey()` helper method using `crypto.randomBytes(16)`
-
-### Changed
-
-- Scene response now includes `roomId` and `roomKey` fields when user has collaborate access
-- `collaborationEnabled` flag is auto-set based on collection/workspace type
-
-### Technical
-
-- Added `generateRoomKey()` private method to `WorkspaceScenesController`
-- Updated `createScene()` to check workspace type and collection privacy
-- Updated `getSceneBySlug()` to decrypt and return room key for authorized users
-
-## [0.7.2] - 2025-12-21
-
-### Added
-
-- **Navigation Debug Endpoint**
-  - `POST /api/v2/debug/navigation` - Receives navigation logs from frontend
-  - Writes NDJSON logs to file specified by `DEBUG_NAVIGATION_LOG_PATH`
-  - Only active when `DEBUG_NAVIGATION=true` environment variable is set
-  - New `DebugModule` and `DebugController`
-
-### Technical
-
-- Added `src/debug/debug.controller.ts` and `src/debug/debug.module.ts`
-- Registered `DebugModule` in `AppModule`
-
-## [0.7.1] - 2025-12-21
-
-### Added
-
-- **Team-Collection Access Level Endpoints**
-  - `POST /workspaces/:id/collections/:id/teams` - Set team access to collection
-  - `GET /workspaces/:id/collections/:id/teams` - List teams with access
-  - `DELETE /workspaces/:id/collections/:id/teams/:teamId` - Remove team access
-
-- **Super Admin Field in Auth Responses**
-  - `isSuperAdmin` field now included in `/api/v2/auth/me` response
-  - `isSuperAdmin` field now included in `/api/v2/auth/register` response
-  - `isSuperAdmin` field now included in `/api/v2/auth/login/local` response
-  - Enables frontend to show super admin UI features
-
-### Changed
-
-- Added `type` field to all workspace API responses
-- Added `collaborationEnabled` field to scene API responses
-- Consolidated database migrations into single init migration
-
-### Technical
-
-- All 32 API tests pass
+- `OIDC_CALLBACK_URL` now auto-generates from `APP_URL` if not explicitly set
+- `PrismaService` now uses `getDatabaseUrl()` for dynamic connection string
 
 ## [0.7.0] - 2025-12-21
 

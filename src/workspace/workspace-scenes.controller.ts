@@ -39,6 +39,7 @@ import { CollectionsService } from '../collections/collections.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { TeamsService } from '../teams/teams.service';
 import { SceneAccessResult, SceneAccessService } from './scene-access.service';
+import { getSecret } from '../utils/secrets';
 
 // DTOs
 interface CreateSceneDto {
@@ -100,7 +101,7 @@ export class WorkspaceScenesController {
   ) {}
 
   private getRoomKeySecret(): Buffer {
-    const secret = process.env.ROOM_KEY_SECRET || process.env.JWT_SECRET;
+    const secret = getSecret('ROOM_KEY_SECRET') || getSecret('JWT_SECRET');
     if (!secret) {
       throw new InternalServerErrorException(
         'Room key secret is not configured',
@@ -627,11 +628,13 @@ export class WorkspaceScenesController {
     // Build the public URL for the thumbnail
     // Note: S3_PUBLIC_URL and S3_BUCKET must be aligned - the public endpoint
     // should serve the same bucket that S3_BUCKET points to.
-    const bucket = (process.env.S3_BUCKET || 'excalidraw').replace(/^\//, ''); // Remove leading slash if any
+    const bucket = (
+      getSecret('S3_BUCKET', 'excalidraw') || 'excalidraw'
+    ).replace(/^\//, ''); // Remove leading slash if any
 
     // S3_PUBLIC_URL: For production with dedicated S3 domain (e.g., https://s3.example.com)
     // If not set, use /s3/ path which is proxied to MinIO via Traefik
-    const s3PublicUrl = process.env.S3_PUBLIC_URL?.replace(/\/+$/, ''); // Remove trailing slashes
+    const s3PublicUrl = getSecret('S3_PUBLIC_URL')?.replace(/\/+$/, ''); // Remove trailing slashes
     const thumbnailUrl = s3PublicUrl
       ? `${s3PublicUrl}/${bucket}/thumbnails/${thumbnailKey}` // Production: https://s3.example.com/bucket/thumbnails/id.png
       : `/s3/${bucket}/thumbnails/${thumbnailKey}`; // Development: /s3/bucket/thumbnails/id.png (via Traefik)
