@@ -104,16 +104,38 @@ export class AuthService implements OnModuleInit {
     }
   }
 
+  /**
+   * Get OIDC configuration with support for Docker internal networking.
+   *
+   * When OIDC_INTERNAL_URL is set, this method:
+   * 1. Fetches discovery metadata from the internal URL
+   * 2. Rewrites token_endpoint, userinfo_endpoint, jwks_uri to use internal URLs
+   * 3. Keeps authorization_endpoint as external (browser needs to reach it)
+   *
+   * This allows the API container to communicate with the OIDC provider
+   * using Docker internal networking while the browser uses external URLs.
+   */
+  /**
+   * Normalize URL by removing trailing slash for consistent comparison/replacement.
+   */
+  private normalizeUrl(url: string): string {
+    return url.replace(/\/+$/, '');
+  }
+
   private async getOidcConfig(): Promise<openidClient.Configuration> {
     if (this.oidcConfig) {
       return this.oidcConfig;
     }
 
-    const issuerUrl = getSecret('OIDC_ISSUER_URL');
     const clientId = getSecret('OIDC_CLIENT_ID');
     const clientSecret = getSecret('OIDC_CLIENT_SECRET');
-    // Use internal URL for discovery if provided (e.g., http://dex:5556/dex for Docker)
-    const internalUrl = getSecret('OIDC_INTERNAL_URL') || issuerUrl;
+
+    // Normalize URLs to remove trailing slashes for consistent comparison
+    const issuerUrl = this.normalizeUrl(getSecret('OIDC_ISSUER_URL') || '');
+    // Use internal URL for discovery AND token exchange if provided (e.g., http://dex:5556/dex for Docker)
+    const internalUrl = this.normalizeUrl(
+      getSecret('OIDC_INTERNAL_URL') || issuerUrl,
+    );
 
     if (!issuerUrl || !clientId || !clientSecret) {
       throw new Error('OIDC configuration missing');
@@ -123,17 +145,58 @@ export class AuthService implements OnModuleInit {
       `Discovering OIDC provider at ${internalUrl} (issuer: ${issuerUrl})`,
     );
 
-    // Discover using internal URL but expect issuer to match the public URL
-    this.oidcConfig = await openidClient.discovery(
-      new URL(internalUrl),
-      clientId,
-      clientSecret,
-      undefined,
-      {
-        // Allow issuer mismatch when using internal URL for discovery
-        execute: [openidClient.allowInsecureRequests],
-      },
-    );
+    try {
+      // Manually fetch discovery metadata and rewrite URLs for Docker internal networking
+      // This is necessary because the OIDC server returns external URLs (e.g., https://draw.example.com/dex/token)
+      // but the API container needs to use internal URLs (e.g., http://dex:5556/dex/token)
+      const discoveryUrl = internalUrl + '/.well-known/openid-configuration';
+
+      // Fetch the discovery document manually
+      const discoveryResponse = await fetch(discoveryUrl);
+      if (!discoveryResponse.ok) {
+        throw new Error(
+          `Discovery request failed: ${discoveryResponse.status}`,
+        );
+      }
+      const metadata = await discoveryResponse.json();
+
+      // Rewrite endpoints to use internal URLs for Docker networking
+      // The external URL (issuerUrl) is used by the browser, internal URL is used by the API container
+      if (internalUrl !== issuerUrl) {
+        const rewriteUrl = (url: string | undefined): string | undefined => {
+          if (!url) return url;
+          // Normalize the URL from metadata before replacement
+          const normalizedUrl = this.normalizeUrl(url);
+          // Replace the external issuer URL prefix with the internal URL prefix
+          return normalizedUrl.replace(issuerUrl, internalUrl);
+        };
+
+        metadata.token_endpoint = rewriteUrl(metadata.token_endpoint);
+        metadata.userinfo_endpoint = rewriteUrl(metadata.userinfo_endpoint);
+        metadata.jwks_uri = rewriteUrl(metadata.jwks_uri);
+        // Keep authorization_endpoint as external URL - browser needs to reach it
+        // metadata.authorization_endpoint stays unchanged
+
+        this.logger.log(
+          `Rewrote OIDC endpoints for internal networking: token=${metadata.token_endpoint}`,
+        );
+      }
+
+      // Create Configuration using the constructor with modified metadata
+      // This bypasses discovery and uses our rewritten endpoints
+      this.oidcConfig = new openidClient.Configuration(
+        metadata,
+        clientId,
+        undefined, // clientMetadata
+        openidClient.ClientSecretPost(clientSecret),
+      );
+
+      // Allow insecure requests for internal Docker networking (http://)
+      openidClient.allowInsecureRequests(this.oidcConfig);
+    } catch (discoveryError) {
+      this.logger.error(`OIDC discovery failed: ${discoveryError}`);
+      throw discoveryError;
+    }
 
     return this.oidcConfig;
   }
@@ -288,12 +351,16 @@ export class AuthService implements OnModuleInit {
     return { accessToken, user };
   }
 
+  /**
+   * Build the authorization URL for OIDC login.
+   * Uses PKCE for security.
+   */
   async getAuthorizationUrl(state: string): Promise<string> {
     const config = await this.getOidcConfig();
     // Build callback URL from APP_URL if not explicitly set
-    const callbackUrl =
-      getSecret('OIDC_CALLBACK_URL') ||
-      `${getSecret('APP_URL', 'http://localhost')}/api/v2/auth/callback`;
+    const appUrl = getSecret('APP_URL', 'http://localhost');
+    const oidcCallbackUrl = getSecret('OIDC_CALLBACK_URL');
+    const callbackUrl = oidcCallbackUrl || `${appUrl}/api/v2/auth/callback`;
 
     if (!callbackUrl) {
       throw new Error('OIDC_CALLBACK_URL not configured');
@@ -307,17 +374,35 @@ export class AuthService implements OnModuleInit {
     const stateData = JSON.stringify({ state, codeVerifier });
     const encodedState = Buffer.from(stateData).toString('base64url');
 
-    const authUrl = openidClient.buildAuthorizationUrl(config, {
-      redirect_uri: callbackUrl,
-      scope: 'openid email profile',
-      state: encodedState,
-      code_challenge: codeChallenge,
-      code_challenge_method: 'S256',
-    });
+    // Manually construct the authorization URL
+    // Note: buildAuthorizationUrl from openid-client v6 has issues with some configurations,
+    // so we construct the URL manually for reliability
+    const serverMeta = config.serverMetadata();
+    const clientMeta = config.clientMetadata();
+
+    const authorizationEndpoint = serverMeta.authorization_endpoint;
+    const clientId = clientMeta.client_id;
+
+    if (!authorizationEndpoint) {
+      throw new Error('Authorization endpoint not found in server metadata');
+    }
+
+    const authUrl = new URL(authorizationEndpoint);
+    authUrl.searchParams.set('client_id', clientId);
+    authUrl.searchParams.set('redirect_uri', callbackUrl);
+    authUrl.searchParams.set('response_type', 'code');
+    authUrl.searchParams.set('scope', 'openid email profile');
+    authUrl.searchParams.set('state', encodedState);
+    authUrl.searchParams.set('code_challenge', codeChallenge);
+    authUrl.searchParams.set('code_challenge_method', 'S256');
 
     return authUrl.href;
   }
 
+  /**
+   * Handle the OIDC callback after user authentication.
+   * Exchanges the authorization code for tokens and creates/updates the user.
+   */
   async handleCallback(
     code: string,
     state: string,
@@ -341,12 +426,19 @@ export class AuthService implements OnModuleInit {
       throw new UnauthorizedException('Invalid state parameter');
     }
 
+    // Build the full callback URL with query parameters as openid-client expects
+    // openid-client v6 requires BOTH state in URL AND expectedState in checks
+    const fullCallbackUrl = new URL(callbackUrl);
+    fullCallbackUrl.searchParams.set('code', code);
+    fullCallbackUrl.searchParams.set('state', state);
+
     // Exchange code for tokens
     const tokens = await openidClient.authorizationCodeGrant(
       config,
-      new URL(callbackUrl),
+      fullCallbackUrl,
       {
         pkceCodeVerifier: codeVerifier,
+        expectedState: state,
       },
     );
 

@@ -51,9 +51,12 @@ COPY --from=builder /app/dist /app/dist
 COPY --from=builder /app/node_modules /app/node_modules
 COPY --from=builder /app/prisma /app/prisma
 
-USER node
-
 EXPOSE 8080
 
-# Run migrations on startup, then start the server
-ENTRYPOINT ["sh", "-c", "npx prisma db push --accept-data-loss 2>/dev/null || npx prisma migrate deploy 2>/dev/null || true; npm run start:prod"]
+# Copy entrypoint script and make executable
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
+USER node
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
