@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.6] - 2025-12-22
+
+### Fixed
+
+- **Super Admin Promotion on SSO Login**
+  - Users listed in `SUPERADMIN_EMAILS` are now automatically promoted to super admin when they log in via SSO/OIDC
+  - Previously, super admin promotion only happened at API startup, which didn't work for users who hadn't logged in yet
+  - New `promoteIfConfiguredSuperAdmin()` method checks and promotes users during OIDC authentication
+  - Existing users will be promoted on their next SSO login
+
 ## [0.7.5] - 2025-12-22
 
 ### Added

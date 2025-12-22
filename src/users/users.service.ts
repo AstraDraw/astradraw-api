@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { User, WorkspaceRole, WorkspaceType } from '@prisma/client';
+import { getSecret } from '../utils/secrets';
 
 export interface UpsertUserDto {
   oidcId: string;
@@ -151,6 +152,9 @@ export class UsersService {
       }
     }
 
+    // Check if user should be promoted to super admin based on SUPERADMIN_EMAILS
+    user = await this.promoteIfConfiguredSuperAdmin(user);
+
     // Ensure user has at least one workspace (for existing users without workspace)
     await this.ensureUserHasWorkspace(user.id, user.email);
 
@@ -242,6 +246,40 @@ export class UsersService {
       await this.promoteToSuperAdmin(user.id);
       this.logger.log(`Promoted super admin: ${email}`);
     }
+  }
+
+  /**
+   * Check if an email is in the SUPERADMIN_EMAILS list
+   */
+  isConfiguredSuperAdmin(email: string): boolean {
+    const superAdminEnv = getSecret('SUPERADMIN_EMAILS');
+    if (!superAdminEnv) {
+      return false;
+    }
+
+    const emails = superAdminEnv
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+
+    return emails.includes(email.toLowerCase());
+  }
+
+  /**
+   * Promote user to super admin if their email is in SUPERADMIN_EMAILS
+   */
+  async promoteIfConfiguredSuperAdmin(user: User): Promise<User> {
+    if (!user.isSuperAdmin && this.isConfiguredSuperAdmin(user.email)) {
+      const updatedUser = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { isSuperAdmin: true },
+      });
+      this.logger.log(
+        `Promoted user to super admin based on SUPERADMIN_EMAILS: ${user.email}`,
+      );
+      return updatedUser;
+    }
+    return user;
   }
 
   /**
