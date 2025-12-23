@@ -5,4 +5,3 @@ import { DebugController } from './debug.controller';
   controllers: [DebugController],
 })
 export class DebugModule {}
-
