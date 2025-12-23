@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2025-12-23
+
+### Added
+
+- **Comment System - Phase 1: Backend Foundation**
+  - New Prisma models: `CommentThread` (canvas anchor) and `Comment` (individual messages)
+  - Full CRUD REST API for comment threads and comments
+  - Thread operations: create, list, get, update position, delete, resolve, reopen
+  - Comment operations: add reply, edit, delete
+  - Permission guards: VIEW for reading, EDIT for creating/modifying, ADMIN/owner for deletion
+  - Field filtering support via `?fields=` query parameter
+  - Cascade delete: deleting a scene removes all threads and comments
+
 ## [0.7.6] - 2025-12-22
 
 ### Fixed
