@@ -17,6 +17,8 @@ src/
 ├── workspaces/        # Workspace management (multi-tenant)
 ├── workspace/         # Scene management (CRUD, data storage)
 ├── teams/             # Team management
+├── collections/       # Collection management
+├── comments/          # Comment threads on scenes
 ├── talktrack/         # Video recording metadata
 ├── storage/           # S3/MinIO storage abstraction
 ├── prisma/            # Database service
@@ -109,3 +111,5 @@ Key models in `prisma/schema.prisma`:
 - `Collection` - Scene collections
 - `Scene` - Scene metadata (linked to S3 storage)
 - `TalktrackRecording` - Video recording metadata
+- `CommentThread` - Comment threads anchored to scene elements
+- `Comment` - Individual comments within threads
