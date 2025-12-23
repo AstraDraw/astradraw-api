@@ -6,17 +6,38 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   Logger,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { User, WorkspaceRole, CollectionAccessLevel } from '@prisma/client';
-import { CollectionsService } from './collections.service';
+import {
+  CollectionsService,
+  CollectionWithAccess,
+} from './collections.service';
 import {
   WorkspaceRoleGuard,
   RequireRole,
 } from '../workspaces/workspace-role.guard';
+import { parseFields, filterResponseArray } from '../utils/field-filter';
+
+// Allowed fields for collection list filtering
+const COLLECTION_FIELDS = [
+  'id',
+  'name',
+  'icon',
+  'color',
+  'isPrivate',
+  'userId',
+  'workspaceId',
+  'sceneCount',
+  'canWrite',
+  'isOwner',
+  'createdAt',
+  'updatedAt',
+] as const;
 
 // DTOs
 interface CreateCollectionDto {
@@ -47,14 +68,23 @@ export class CollectionsController {
 
   /**
    * List all accessible collections in a workspace
+   *
+   * Supports field filtering via `?fields=` query parameter to reduce payload size.
+   * Example: ?fields=id,name,icon,isPrivate,sceneCount,canWrite,isOwner
    */
   @Get('workspaces/:workspaceId/collections')
   @UseGuards(WorkspaceRoleGuard)
   async listCollections(
     @Param('workspaceId') workspaceId: string,
     @CurrentUser() user: User,
-  ) {
-    return this.collectionsService.listCollections(workspaceId, user.id);
+    @Query('fields') fieldsParam?: string,
+  ): Promise<Partial<CollectionWithAccess>[]> {
+    const fields = parseFields(fieldsParam, COLLECTION_FIELDS);
+    const collections = await this.collectionsService.listCollections(
+      workspaceId,
+      user.id,
+    );
+    return filterResponseArray(collections, fields);
   }
 
   /**

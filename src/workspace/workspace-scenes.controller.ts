@@ -40,6 +40,23 @@ import { WorkspacesService } from '../workspaces/workspaces.service';
 import { TeamsService } from '../teams/teams.service';
 import { SceneAccessResult, SceneAccessService } from './scene-access.service';
 import { getSecret } from '../utils/secrets';
+import { parseFields, filterResponseArray } from '../utils/field-filter';
+
+// Allowed fields for scene list filtering
+const SCENE_FIELDS = [
+  'id',
+  'title',
+  'thumbnailUrl',
+  'storageKey',
+  'roomId',
+  'collectionId',
+  'isPublic',
+  'collaborationEnabled',
+  'lastOpenedAt',
+  'createdAt',
+  'updatedAt',
+  'canEdit',
+] as const;
 
 // DTOs
 interface CreateSceneDto {
@@ -155,16 +172,27 @@ export class WorkspaceScenesController {
 
   /**
    * List scenes for a workspace (filtered by accessible collections)
+   *
+   * Supports field filtering via `?fields=` query parameter to reduce payload size.
+   * Example: ?fields=id,title,thumbnailUrl,updatedAt,isPublic,canEdit
    */
   @Get('scenes')
   async listScenes(
     @CurrentUser() user: User,
     @Query('workspaceId') workspaceId?: string,
     @Query('collectionId') collectionId?: string,
-  ): Promise<SceneResponse[]> {
+    @Query('fields') fieldsParam?: string,
+  ): Promise<Partial<SceneResponse>[]> {
+    const fields = parseFields(fieldsParam, SCENE_FIELDS);
+
     // If workspaceId is provided, list scenes from that workspace
     if (workspaceId) {
-      return this.listWorkspaceScenes(user, workspaceId, collectionId);
+      const scenes = await this.listWorkspaceScenes(
+        user,
+        workspaceId,
+        collectionId,
+      );
+      return filterResponseArray(scenes, fields);
     }
 
     // Legacy behavior: list user's own scenes
@@ -173,7 +201,8 @@ export class WorkspaceScenesController {
       orderBy: { updatedAt: 'desc' },
     });
 
-    return scenes.map((scene) => this.toSceneResponse(scene, true));
+    const responses = scenes.map((scene) => this.toSceneResponse(scene, true));
+    return filterResponseArray(responses, fields);
   }
 
   /**
