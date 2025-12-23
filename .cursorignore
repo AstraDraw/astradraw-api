@@ -1,0 +1,15 @@
+# =============================================================================
+# Backend Cursorignore - Hierarchical ignore for backend repo
+# =============================================================================
+# Excludes build artifacts and rarely-needed content from AI indexing.
+
+# Build output
+dist/
+
+# Dependencies
+node_modules/
+
+# Test output
+coverage/
+test-results/
+
