@@ -53,6 +53,11 @@ model User {
   scenes              Scene[]
   talktrackRecordings TalktrackRecording[]
   workspaceMemberships WorkspaceMember[]
+  
+  // Comment relations
+  createdThreads    CommentThread[] @relation("CreatedThreads")
+  resolvedThreads   CommentThread[] @relation("ResolvedThreads")
+  createdComments   Comment[]       @relation("CreatedComments")
 
   @@map("users")
 }
@@ -241,6 +246,7 @@ model Scene {
 
   // Relations
   talktrackRecordings TalktrackRecording[]
+  commentThreads      CommentThread[]
 
   @@index([userId])
   @@index([collectionId])
@@ -271,4 +277,70 @@ model TalktrackRecording {
   @@index([sceneId])
   @@index([userId])
   @@map("talktrack_recordings")
+}
+
+// =============================================================================
+// Comment System Models
+// =============================================================================
+
+// CommentThread model - anchor point for comments on the canvas
+model CommentThread {
+  id              String    @id @default(cuid())
+  
+  // Scene relationship
+  sceneId         String
+  scene           Scene     @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  
+  // Canvas position (scene coordinates, not viewport)
+  x               Float
+  y               Float
+  
+  // Thread status
+  resolved        Boolean   @default(false)
+  resolvedAt      DateTime?
+  resolvedById    String?
+  resolvedBy      User?     @relation("ResolvedThreads", fields: [resolvedById], references: [id])
+  
+  // Thread creator
+  createdById     String
+  createdBy       User      @relation("CreatedThreads", fields: [createdById], references: [id])
+  
+  // Comments in this thread
+  comments        Comment[]
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([sceneId])
+  @@index([createdById])
+  @@map("comment_threads")
+}
+
+// Comment model - individual message in a thread
+model Comment {
+  id              String        @id @default(cuid())
+  
+  // Thread relationship
+  threadId        String
+  thread          CommentThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  
+  // Content
+  content         String        @db.Text
+  
+  // Mentions (array of user IDs)
+  mentions        String[]      @default([])
+  
+  // Author
+  createdById     String
+  createdBy       User          @relation("CreatedComments", fields: [createdById], references: [id])
+  
+  // Edit tracking
+  editedAt        DateTime?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@index([threadId])
+  @@index([createdById])
+  @@map("comments")
 }
