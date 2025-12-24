@@ -16,6 +16,7 @@ import type { UpdateCommentDto } from './dto/update-comment.dto';
 export interface UserSummary {
   id: string;
   name: string | null;
+  email: string;
   avatar: string | null;
 }
 
@@ -81,15 +82,15 @@ export class CommentsService {
       where: whereClause,
       include: {
         createdBy: {
-          select: { id: true, name: true, avatarUrl: true },
+          select: { id: true, name: true, email: true, avatarUrl: true },
         },
         resolvedBy: {
-          select: { id: true, name: true, avatarUrl: true },
+          select: { id: true, name: true, email: true, avatarUrl: true },
         },
         comments: {
           include: {
             createdBy: {
-              select: { id: true, name: true, avatarUrl: true },
+              select: { id: true, name: true, email: true, avatarUrl: true },
             },
           },
           orderBy: { createdAt: 'asc' },
@@ -112,15 +113,15 @@ export class CommentsService {
       where: { id: threadId },
       include: {
         createdBy: {
-          select: { id: true, name: true, avatarUrl: true },
+          select: { id: true, name: true, email: true, avatarUrl: true },
         },
         resolvedBy: {
-          select: { id: true, name: true, avatarUrl: true },
+          select: { id: true, name: true, email: true, avatarUrl: true },
         },
         comments: {
           include: {
             createdBy: {
-              select: { id: true, name: true, avatarUrl: true },
+              select: { id: true, name: true, email: true, avatarUrl: true },
             },
           },
           orderBy: { createdAt: 'asc' },
@@ -188,15 +189,15 @@ export class CommentsService {
       },
       include: {
         createdBy: {
-          select: { id: true, name: true, avatarUrl: true },
+          select: { id: true, name: true, email: true, avatarUrl: true },
         },
         resolvedBy: {
-          select: { id: true, name: true, avatarUrl: true },
+          select: { id: true, name: true, email: true, avatarUrl: true },
         },
         comments: {
           include: {
             createdBy: {
-              select: { id: true, name: true, avatarUrl: true },
+              select: { id: true, name: true, email: true, avatarUrl: true },
             },
           },
           orderBy: { createdAt: 'asc' },
@@ -258,15 +259,15 @@ export class CommentsService {
       },
       include: {
         createdBy: {
-          select: { id: true, name: true, avatarUrl: true },
+          select: { id: true, name: true, email: true, avatarUrl: true },
         },
         resolvedBy: {
-          select: { id: true, name: true, avatarUrl: true },
+          select: { id: true, name: true, email: true, avatarUrl: true },
         },
         comments: {
           include: {
             createdBy: {
-              select: { id: true, name: true, avatarUrl: true },
+              select: { id: true, name: true, email: true, avatarUrl: true },
             },
           },
           orderBy: { createdAt: 'asc' },
@@ -366,15 +367,15 @@ export class CommentsService {
       },
       include: {
         createdBy: {
-          select: { id: true, name: true, avatarUrl: true },
+          select: { id: true, name: true, email: true, avatarUrl: true },
         },
         resolvedBy: {
-          select: { id: true, name: true, avatarUrl: true },
+          select: { id: true, name: true, email: true, avatarUrl: true },
         },
         comments: {
           include: {
             createdBy: {
-              select: { id: true, name: true, avatarUrl: true },
+              select: { id: true, name: true, email: true, avatarUrl: true },
             },
           },
           orderBy: { createdAt: 'asc' },
@@ -425,15 +426,15 @@ export class CommentsService {
       },
       include: {
         createdBy: {
-          select: { id: true, name: true, avatarUrl: true },
+          select: { id: true, name: true, email: true, avatarUrl: true },
         },
         resolvedBy: {
-          select: { id: true, name: true, avatarUrl: true },
+          select: { id: true, name: true, email: true, avatarUrl: true },
         },
         comments: {
           include: {
             createdBy: {
-              select: { id: true, name: true, avatarUrl: true },
+              select: { id: true, name: true, email: true, avatarUrl: true },
             },
           },
           orderBy: { createdAt: 'asc' },
@@ -489,7 +490,7 @@ export class CommentsService {
       },
       include: {
         createdBy: {
-          select: { id: true, name: true, avatarUrl: true },
+          select: { id: true, name: true, email: true, avatarUrl: true },
         },
       },
     });
@@ -558,7 +559,7 @@ export class CommentsService {
       },
       include: {
         createdBy: {
-          select: { id: true, name: true, avatarUrl: true },
+          select: { id: true, name: true, email: true, avatarUrl: true },
         },
       },
     });
