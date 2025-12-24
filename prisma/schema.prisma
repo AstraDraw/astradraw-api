@@ -30,6 +30,11 @@ enum CollectionAccessLevel {
   EDIT
 }
 
+enum NotificationType {
+  COMMENT   // New comment on thread user participated in
+  MENTION   // User was @mentioned in a comment
+}
+
 // =============================================================================
 // User Model
 // =============================================================================
@@ -58,6 +63,10 @@ model User {
   createdThreads    CommentThread[] @relation("CreatedThreads")
   resolvedThreads   CommentThread[] @relation("ResolvedThreads")
   createdComments   Comment[]       @relation("CreatedComments")
+  
+  // Notification relations
+  notifications      Notification[] @relation("UserNotifications")
+  actorNotifications Notification[] @relation("ActorNotifications")
 
   @@map("users")
 }
@@ -247,6 +256,7 @@ model Scene {
   // Relations
   talktrackRecordings TalktrackRecording[]
   commentThreads      CommentThread[]
+  notifications       Notification[]
 
   @@index([userId])
   @@index([collectionId])
@@ -308,6 +318,9 @@ model CommentThread {
   // Comments in this thread
   comments        Comment[]
   
+  // Notifications referencing this thread
+  notifications   Notification[]
+  
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   
@@ -337,10 +350,49 @@ model Comment {
   // Edit tracking
   editedAt        DateTime?
   
+  // Notifications referencing this comment
+  notifications   Notification[]
+  
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   
   @@index([threadId])
   @@index([createdById])
   @@map("comments")
+}
+
+// =============================================================================
+// Notification System Models
+// =============================================================================
+
+// Notification model - alerts users about comments and mentions
+model Notification {
+  id        String           @id @default(cuid())
+  type      NotificationType
+  
+  // Recipient - who receives the notification
+  userId    String
+  user      User             @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Actor - who triggered the notification
+  actorId   String
+  actor     User             @relation("ActorNotifications", fields: [actorId], references: [id])
+  
+  // References to comment system
+  threadId  String?
+  thread    CommentThread?   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  commentId String?
+  comment   Comment?         @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  sceneId   String
+  scene     Scene            @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  
+  // Read status
+  read      Boolean          @default(false)
+  readAt    DateTime?
+  
+  createdAt DateTime         @default(now())
+  
+  @@index([userId, read])
+  @@index([userId, createdAt])
+  @@map("notifications")
 }
