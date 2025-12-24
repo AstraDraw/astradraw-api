@@ -26,7 +26,7 @@ async function bootstrap() {
 
   app.setGlobalPrefix(getSecret('GLOBAL_PREFIX', '/api/v2'));
 
-  const port = getSecret('PORT', '8080');
+  const port = getSecret('PORT', '8081');
   await app.listen(parseInt(port, 10));
 }
 bootstrap();
