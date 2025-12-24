@@ -5,6 +5,9 @@
   "author": "",
   "private": true,
   "license": "MIT",
+  "prisma": {
+    "seed": "npx ts-node prisma/seed.ts"
+  },
   "scripts": {
     "prebuild": "rimraf dist && prisma generate",
     "build": "nest build",
