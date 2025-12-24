@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2025-12-24
+
+### Added
+
+- **Notification System - Phase 1 & 2: Backend Complete**
+  - New Prisma model: `Notification` with types MENTION and COMMENT
+  - REST API endpoints: list notifications, unread count, mark as read, mark all as read
+  - Cursor-based pagination for notification list
+  - NotificationsService with createMentionNotifications and createCommentNotifications methods
+  - Integration with CommentsService: notifications triggered on thread/comment creation
+  - MENTION notifications for @mentioned users in comments
+  - COMMENT notifications for thread participants when new replies are added
+  - Self-mentions and comment authors are excluded from notifications
+
 ## [0.8.0] - 2025-12-23
 
 ### Added

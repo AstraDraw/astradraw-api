@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SceneAccessService } from '../workspace/scene-access.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import type { CreateThreadDto } from './dto/create-thread.dto';
 import type { CreateCommentDto } from './dto/create-comment.dto';
 import type { UpdateThreadDto } from './dto/update-thread.dto';
@@ -50,6 +51,7 @@ export class CommentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly sceneAccessService: SceneAccessService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // ===========================================================================
@@ -206,6 +208,17 @@ export class CommentsService {
     });
 
     this.logger.log(`Created thread ${thread.id} on scene ${sceneId}`);
+
+    // Create MENTION notifications for @mentioned users
+    if (dto.mentions?.length) {
+      await this.notificationsService.createMentionNotifications({
+        actorId: userId,
+        mentions: dto.mentions,
+        threadId: thread.id,
+        commentId: thread.comments[0].id,
+        sceneId,
+      });
+    }
 
     return this.mapThreadToResponse(thread);
   }
@@ -489,6 +502,29 @@ export class CommentsService {
 
     this.logger.log(`Added comment ${comment.id} to thread ${threadId}`);
 
+    // Create MENTION notifications for @mentioned users
+    if (dto.mentions?.length) {
+      await this.notificationsService.createMentionNotifications({
+        actorId: userId,
+        mentions: dto.mentions,
+        threadId,
+        commentId: comment.id,
+        sceneId: thread.sceneId,
+      });
+    }
+
+    // Create COMMENT notifications for thread participants (excluding author)
+    const participants = await this.getThreadParticipants(threadId);
+    if (participants.length > 0) {
+      await this.notificationsService.createCommentNotifications({
+        actorId: userId,
+        participants,
+        threadId,
+        commentId: comment.id,
+        sceneId: thread.sceneId,
+      });
+    }
+
     return this.mapCommentToResponse(comment);
   }
 
@@ -676,5 +712,16 @@ export class CommentsService {
       editedAt: comment.editedAt,
       createdAt: comment.createdAt,
     };
+  }
+
+  /**
+   * Get unique user IDs who have commented on a thread
+   */
+  private async getThreadParticipants(threadId: string): Promise<string[]> {
+    const comments = await this.prisma.comment.findMany({
+      where: { threadId },
+      select: { createdById: true },
+    });
+    return [...new Set(comments.map((c) => c.createdById))];
   }
 }

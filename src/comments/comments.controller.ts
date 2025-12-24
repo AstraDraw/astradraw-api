@@ -93,6 +93,9 @@ export class CommentsController {
     @Body() dto: CreateThreadDto,
     @CurrentUser() user: User,
   ): Promise<ThreadResponse> {
+    this.logger.log(
+      `Creating thread: x=${dto.x}, y=${dto.y}, mentions=${JSON.stringify(dto.mentions)}`,
+    );
     return this.commentsService.createThread(sceneId, user.id, dto);
   }
 
