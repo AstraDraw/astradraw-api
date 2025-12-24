@@ -649,9 +649,10 @@ export class CommentsService {
     resolvedBy: {
       id: string;
       name: string | null;
+      email: string;
       avatarUrl: string | null;
     } | null;
-    createdBy: { id: string; name: string | null; avatarUrl: string | null };
+    createdBy: { id: string; name: string | null; email: string; avatarUrl: string | null };
     comments: Array<{
       id: string;
       threadId: string;
@@ -659,7 +660,7 @@ export class CommentsService {
       mentions: string[];
       editedAt: Date | null;
       createdAt: Date;
-      createdBy: { id: string; name: string | null; avatarUrl: string | null };
+      createdBy: { id: string; name: string | null; email: string; avatarUrl: string | null };
     }>;
     _count: { comments: number };
     createdAt: Date;
@@ -676,12 +677,14 @@ export class CommentsService {
         ? {
             id: thread.resolvedBy.id,
             name: thread.resolvedBy.name,
+            email: thread.resolvedBy.email,
             avatar: thread.resolvedBy.avatarUrl,
           }
         : null,
       createdBy: {
         id: thread.createdBy.id,
         name: thread.createdBy.name,
+        email: thread.createdBy.email,
         avatar: thread.createdBy.avatarUrl,
       },
       comments: thread.comments.map((c) => this.mapCommentToResponse(c)),
@@ -698,7 +701,7 @@ export class CommentsService {
     mentions: string[];
     editedAt: Date | null;
     createdAt: Date;
-    createdBy: { id: string; name: string | null; avatarUrl: string | null };
+    createdBy: { id: string; name: string | null; email: string; avatarUrl: string | null };
   }): CommentResponse {
     return {
       id: comment.id,
@@ -708,6 +711,7 @@ export class CommentsService {
       createdBy: {
         id: comment.createdBy.id,
         name: comment.createdBy.name,
+        email: comment.createdBy.email,
         avatar: comment.createdBy.avatarUrl,
       },
       editedAt: comment.editedAt,
