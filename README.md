@@ -1,11 +1,13 @@
 # AstraDraw API
 
-> **Built on top of [excalidraw-storage-backend](https://github.com/kiliandeca/excalidraw-storage-backend)** - Extended with authentication, workspaces, and more.
+> **Note:** Please file all issues in the [main AstraDraw repository](https://github.com/AstraDraw/astradraw/issues). This repository is for code contributions only.
+
+> **Built on top of [excalidraw-storage-backend](https://github.com/alswl/excalidraw-storage-backend)** - Extended with authentication, workspaces, and more.
 
 Backend API for AstraDraw providing user authentication, personal workspaces, video recording management, and scene storage.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Docker](https://img.shields.io/badge/docker-ghcr.io-blue)](https://github.com/astrateam-net/astradraw-api/pkgs/container/astradraw-api)
+[![Docker](https://img.shields.io/badge/docker-ghcr.io-blue)](https://github.com/AstraDraw/astradraw-api/pkgs/container/astradraw-api)
 
 ## Features
 
@@ -21,10 +23,10 @@ Backend API for AstraDraw providing user authentication, personal workspaces, vi
 
 This is the backend API component of the AstraDraw suite:
 
-- **[astradraw-app](https://github.com/astrateam-net/astradraw-app)**: Frontend application
+- **[astradraw-app](https://github.com/AstraDraw/astradraw-app)**: Frontend application
 - **astradraw-api** (this repo): Backend API
-- **[astradraw-room](https://github.com/astrateam-net/astradraw-room)**: WebSocket collaboration server
-- **[astradraw](https://github.com/astrateam-net/astradraw)**: Deployment configuration & documentation
+- **[astradraw-room](https://github.com/AstraDraw/astradraw-room)**: WebSocket collaboration server
+- **[astradraw](https://github.com/AstraDraw/astradraw)**: Deployment configuration & documentation
 
 ## Tech Stack
 
@@ -47,7 +49,7 @@ docker run -d \
   -e S3_ACCESS_KEY=minioadmin \
   -e S3_SECRET_KEY=minioadmin \
   -e JWT_SECRET=your-secret-key \
-  ghcr.io/astrateam-net/astradraw-api:latest
+  ghcr.io/AstraDraw/astradraw-api:latest
 ```
 
 ### Local Development
@@ -207,7 +209,7 @@ model TalktrackRecording {
 
 ## Deployment
 
-For complete deployment with frontend, database, and Traefik proxy, see the [astradraw deployment repo](https://github.com/astrateam-net/astradraw).
+For complete deployment with frontend, database, and Traefik proxy, see the [astradraw deployment repo](https://github.com/AstraDraw/astradraw).
 
 ## License
 
@@ -215,8 +217,8 @@ MIT License - Based on [excalidraw-storage-backend](https://github.com/kiliandec
 
 ## Links
 
-- **Main Repo**: [astradraw](https://github.com/astrateam-net/astradraw)
-- **Frontend App**: [astradraw-app](https://github.com/astrateam-net/astradraw-app)
-- **Room Server**: [astradraw-room](https://github.com/astrateam-net/astradraw-room)
-- **Upstream**: [kiliandeca/excalidraw-storage-backend](https://github.com/kiliandeca/excalidraw-storage-backend)
-- **Docker Image**: [ghcr.io/astrateam-net/astradraw-api](https://github.com/astrateam-net/astradraw-api/pkgs/container/astradraw-api)
+- **Main Repo**: [astradraw](https://github.com/AstraDraw/astradraw)
+- **Frontend App**: [astradraw-app](https://github.com/AstraDraw/astradraw-app)
+- **Room Server**: [astradraw-room](https://github.com/AstraDraw/astradraw-room)
+- **Upstream**: [alswl/excalidraw-storage-backend](https://github.com/alswl/excalidraw-storage-backend)
+- **Docker Image**: [ghcr.io/AstraDraw/astradraw-api](https://github.com/AstraDraw/astradraw-api/pkgs/container/astradraw-api)
