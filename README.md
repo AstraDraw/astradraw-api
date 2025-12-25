@@ -7,7 +7,7 @@
 Backend API for AstraDraw providing user authentication, personal workspaces, video recording management, and scene storage.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Docker](https://img.shields.io/badge/docker-ghcr.io-blue)](https://github.com/AstraDraw/astradraw-api/pkgs/container/astradraw-api)
+[![Docker](https://img.shields.io/badge/docker-hub.docker.com-blue)](https://hub.docker.com/r/astradraw/api)
 
 ## Features
 
