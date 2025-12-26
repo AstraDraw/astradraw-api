@@ -14,6 +14,7 @@ import { TeamsModule } from './teams/teams.module';
 import { CollectionsModule } from './collections/collections.module';
 import { CommentsModule } from './comments/comments.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { SearchModule } from './search/search.module';
 import { WorkspaceScenesController } from './workspace/workspace-scenes.controller';
 import { SceneAccessService } from './workspace/scene-access.service';
 import { DebugModule } from './debug/debug.module';
@@ -29,6 +30,7 @@ import { DebugModule } from './debug/debug.module';
     CollectionsModule,
     CommentsModule,
     NotificationsModule,
+    SearchModule,
     DebugModule,
   ],
   controllers: [

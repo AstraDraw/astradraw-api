@@ -652,7 +652,12 @@ export class CommentsService {
       email: string;
       avatarUrl: string | null;
     } | null;
-    createdBy: { id: string; name: string | null; email: string; avatarUrl: string | null };
+    createdBy: {
+      id: string;
+      name: string | null;
+      email: string;
+      avatarUrl: string | null;
+    };
     comments: Array<{
       id: string;
       threadId: string;
@@ -660,7 +665,12 @@ export class CommentsService {
       mentions: string[];
       editedAt: Date | null;
       createdAt: Date;
-      createdBy: { id: string; name: string | null; email: string; avatarUrl: string | null };
+      createdBy: {
+        id: string;
+        name: string | null;
+        email: string;
+        avatarUrl: string | null;
+      };
     }>;
     _count: { comments: number };
     createdAt: Date;
@@ -701,7 +711,12 @@ export class CommentsService {
     mentions: string[];
     editedAt: Date | null;
     createdAt: Date;
-    createdBy: { id: string; name: string | null; email: string; avatarUrl: string | null };
+    createdBy: {
+      id: string;
+      name: string | null;
+      email: string;
+      avatarUrl: string | null;
+    };
   }): CommentResponse {
     return {
       id: comment.id,
