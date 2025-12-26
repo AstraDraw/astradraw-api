@@ -277,10 +277,24 @@ export class WorkspacesService {
   }
 
   /**
-   * Delete a workspace (admin only)
+   * Delete a workspace (admin only, cannot delete PERSONAL workspaces)
    */
   async deleteWorkspace(workspaceId: string, userId: string): Promise<void> {
     await this.requireRole(workspaceId, userId, WorkspaceRole.ADMIN);
+
+    // Prevent deleting personal workspaces
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { type: true },
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    if (workspace.type === WorkspaceType.PERSONAL) {
+      throw new ForbiddenException('Cannot delete personal workspace');
+    }
 
     await this.prisma.workspace.delete({
       where: { id: workspaceId },
