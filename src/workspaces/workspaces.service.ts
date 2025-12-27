@@ -196,16 +196,8 @@ export class WorkspacesService {
             role: WorkspaceRole.ADMIN,
           },
         },
-        // Create a private collection for the creator (like Excalidraw Plus)
-        // This ensures every workspace has a fallback for "New scene" button
-        collections: {
-          create: {
-            name: 'Private',
-            icon: '🔒',
-            isPrivate: true,
-            userId,
-          },
-        },
+        // Note: No private collection created for SHARED workspaces
+        // Users should create collections explicitly via the UI
       },
       include: {
         _count: {
